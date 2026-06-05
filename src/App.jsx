@@ -1,53 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, theme, Typography, Table } from 'antd';
+import React, { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Layout, Menu, theme, Typography } from 'antd';
 import { DashboardOutlined, AppstoreOutlined, TransactionOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import Dashboard from './pages/Dashboard';
+import Urunler from './pages/Urunler';
+import StokHareketleri from './pages/StokHareketleri';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [urunler, setUrunler] = useState([]);
-  const [yukleniyor, setYukleniyor] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
-
-  const verileriCek = async () => {
-    try {
-      const response = await axios.get('http://localhost:5185/api/urunler');
-      setUrunler(response.data);
-      setYukleniyor(false);
-    } catch (error) {
-      console.log(error);
-      setYukleniyor(false);
-    }
-  };
-
-  useEffect(() => {
-    verileriCek();
-  }, []);
-
-  const tabloSutunlari = [
-    { title: 'ID', dataIndex: 'urunID', key: 'urunID' },
-    { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi' },
-    { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi' },
-    { title: 'Fiyat', dataIndex: 'birimFiyat', key: 'birimFiyat', render: (text) => <span>{text} TL</span> },
-    { title: 'Stok', dataIndex: 'stokMiktari', key: 'stokMiktari' }
-  ];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
         <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6 }} />
         
-        <Menu theme="dark" defaultSelectedKeys={['2']} mode="inline" items={[
-          { key: '1', icon: <DashboardOutlined />, label: 'Dashboard' },
-          { key: '2', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
-          { key: '3', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
-        ]} />
+        <Menu 
+          theme="dark" 
+          selectedKeys={[location.pathname]} 
+          mode="inline" 
+          onClick={(e) => navigate(e.key)}
+          items={[
+            { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
+            { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
+            { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
+          ]} 
+        />
       </Sider>
 
       <Layout>
@@ -57,16 +43,11 @@ const App = () => {
         
         <Content style={{ margin: '16px' }}>
           <div style={{ padding: 24, minHeight: 360, background: colorBgContainer, borderRadius: borderRadiusLG }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h2>Ürün Listesi</h2>
-            </div>
-            
-            <Table 
-              dataSource={urunler} 
-              columns={tabloSutunlari} 
-              rowKey="urunID" 
-              loading={yukleniyor} 
-            />
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/urunler" element={<Urunler />} />
+              <Route path="/stok-hareketleri" element={<StokHareketleri />} />
+            </Routes>
           </div>
         </Content>
       </Layout>
