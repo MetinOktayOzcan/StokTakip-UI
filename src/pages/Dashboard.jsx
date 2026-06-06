@@ -67,7 +67,16 @@ const Dashboard = () => {
       dataIndex: 'stokMiktari', 
       key: 'stokMiktari',
       render: (stok) => (
-        <Tag color={stok === 0 ? '#ff5630' : '#ffab00'}>
+        <Tag 
+          style={{ 
+            background: stok === 0 ? 'rgba(255, 86, 48, 0.16)' : 'rgba(255, 171, 0, 0.16)', 
+            color: stok === 0 ? '#ff5630' : '#ffab00', 
+            border: 'none',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            fontWeight: 'bold'
+          }}
+        >
           {stok === 0 ? 'Tükendi (0)' : `${stok} Adet Kaldı`}
         </Tag>
       )
