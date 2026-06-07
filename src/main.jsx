@@ -5,6 +5,8 @@ import App from './App.jsx';
 import './index.css';
 import axios from 'axios';
 
+axios.defaults.baseURL = 'https://stoktakip-core-api2026007181930-fcgheugwghhvcdck.spaincentral-01.azurewebsites.net';
+
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
