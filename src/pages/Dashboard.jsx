@@ -11,8 +11,8 @@ const Dashboard = () => {
   const [hareketler, setHareketler] = useState([]);
 
   useEffect(() => {
-    axios.get('https://localhost:7140/api/urunler').then(res => setUrunler(res.data));
-    axios.get('https://localhost:7140/api/stokhareketleri').then(res => setHareketler(res.data));
+    axios.get('/api/urunler').then(res => setUrunler(res.data));
+    axios.get('/api/stokhareketleri').then(res => setHareketler(res.data));
   }, []);
 
   const kritikStokUrunleri = urunler

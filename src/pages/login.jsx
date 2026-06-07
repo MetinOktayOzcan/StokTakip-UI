@@ -12,7 +12,7 @@ const Login = () => {
     e.preventDefault();
     
     try {
-      const response = await axios.post('https://localhost:7140/api/auth/login', {
+      const response = await axios.post('/api/auth/login', {
         kullaniciAdi: kullaniciAdi,
         sifre: sifre
       });
