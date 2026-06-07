@@ -49,15 +49,33 @@ const Dashboard = () => {
     value: kategoriData[k]
   }));
 
-  const grafikVerisi = [
-    { gun: 'Pzt', giris: 40, cikis: 24 },
-    { gun: 'Sal', giris: 30, cikis: 13 },
-    { gun: 'Çar', giris: 20, cikis: 58 },
-    { gun: 'Per', giris: 27, cikis: 39 },
-    { gun: 'Cum', giris: 18, cikis: 48 },
-    { gun: 'Cmt', giris: 23, cikis: 38 },
-    { gun: 'Paz', giris: 34, cikis: 43 },
-  ];
+
+  const gunIsimleri = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const dinamikGrafikVerisi = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return {
+      gun: gunIsimleri[d.getDay()], 
+      tamTarih: d.toLocaleDateString('tr-TR'),
+      giris: 0,
+      cikis: 0
+    };
+  });
+
+  hareketler.forEach(hareket => {
+    const islemTarihi = new Date(hareket.islemTarihi).toLocaleDateString('tr-TR');
+    
+    const hedefGun = dinamikGrafikVerisi.find(g => g.tamTarih === islemTarihi);
+
+    if (hedefGun) {
+      const tur = hareket.islemTuru.toLowerCase();
+      if (tur.includes('giriş') || tur.includes('giris')) {
+        hedefGun.giris += hareket.miktar;
+      } else if (tur.includes('çıkış') || tur.includes('cikis')) {
+        hedefGun.cikis += hareket.miktar;
+      }
+    }
+  });
 
   const kritikSutunlar = [
     { title: 'Ürün', dataIndex: 'urunAdi', key: 'urunAdi', fontWeight: 'bold' },
@@ -92,7 +110,7 @@ const Dashboard = () => {
 
   return (
     <div>
-      {/* Tablonun sayfa numaralarını her zaman en altta tutacak CSS hilesi */}
+      {/* Tablonun sayfa numaralarını her zaman en altta tutacak CSS kodu */}
       <style>{`
         .sabit-tablo .ant-spin-container {
           display: flex;
@@ -125,7 +143,7 @@ const Dashboard = () => {
           <Card title="Haftalık Stok Dalgalanması" style={kartStili}>
             <div style={{ width: '100%', height: 230 }}>
               <ResponsiveContainer>
-                <AreaChart data={grafikVerisi} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={dinamikGrafikVerisi} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2d3a48" />
                   <XAxis dataKey="gun" axisLine={false} tickLine={false} tick={{fill: '#919eab'}} />
                   <YAxis axisLine={false} tickLine={false} tick={{fill: '#919eab'}} />
