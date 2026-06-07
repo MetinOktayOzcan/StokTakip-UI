@@ -53,7 +53,6 @@ const islemKaydet = async (degerler) => {
   }, []);
 
   const tabloSutunlari = [
-    { title: 'Hareket ID', dataIndex: 'hareketID', key: 'hareketID' },
     { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi' },
     { 
       title: 'İşlem Türü', 

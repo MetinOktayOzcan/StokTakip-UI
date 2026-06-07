@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Layout, Menu, theme, Typography, ConfigProvider, Switch } from 'antd';
-import { DashboardOutlined, AppstoreOutlined, TransactionOutlined } from '@ant-design/icons';
+import { Layout, Menu, theme, Typography, ConfigProvider, Button, Dropdown, Space, Avatar, Grid } from 'antd';
+import { 
+  DashboardOutlined, 
+  AppstoreOutlined, 
+  TransactionOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  MoonOutlined,
+  SunOutlined
+} from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import Urunler from './pages/Urunler';
 import StokHareketleri from './pages/StokHareketleri';
 import Login from './pages/login';
 
 const { Header, Sider, Content } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -20,6 +31,15 @@ const App = () => {
   const [karanlikMod, setKaranlikMod] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const screens = useBreakpoint();
+
+  useEffect(() => {
+    if (screens.xs || screens.sm) {
+      setCollapsed(true);
+    } else {
+      setCollapsed(false);
+    }
+  }, [screens]);
 
   const temaRengi = karanlikMod ? {
     genelArkaPlan: '#161c24',
@@ -33,6 +53,27 @@ const App = () => {
     yazi: '#000000',
     cerceve: '#d9d9d9',
     menuArka: '#001529'
+  };
+
+  const cikisYap = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  const profilMenusu = {
+    items: [
+      {
+        key: '1',
+        icon: <UserOutlined />,
+        label: 'Profilim',
+      },
+      {
+        key: '2',
+        icon: <LogoutOutlined style={{ color: '#ff5630' }} />,
+        label: <span style={{ color: '#ff5630' }}>Çıkış Yap</span>,
+        onClick: cikisYap
+      },
+    ],
   };
 
   if (location.pathname === '/login') {
@@ -56,54 +97,160 @@ const App = () => {
         }
       }}
     >
+      <style>{`
+        .menu-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .menu-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .menu-scroll::-webkit-scrollbar-thumb {
+          background-color: ${temaRengi.cerceve};
+          border-radius: 10px;
+        }
+        .ant-layout {
+          overflow-x: hidden;
+        }
+      `}</style>
+
       <Layout style={{ minHeight: '100vh', background: temaRengi.genelArkaPlan }}>
-        <Sider 
-          collapsible 
-          collapsed={collapsed} 
-          onCollapse={(value) => setCollapsed(value)}
-          style={{ background: temaRengi.menuArka, borderRight: `1px solid ${temaRengi.cerceve}` }}
-        >
-          <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8 }} />
-          
-          <Menu 
-            theme="dark" 
-            selectedKeys={[location.pathname]} 
-            mode="inline" 
-            onClick={(e) => navigate(e.key)}
-            style={{ background: 'transparent' }}
-            items={[
-              { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
-              { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
-              { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
-            ]} 
+        
+        {screens.xs && !collapsed && (
+          <div 
+            onClick={() => setCollapsed(true)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: 'rgba(0, 0, 0, 0.6)',
+              zIndex: 98
+            }}
           />
+        )}
+
+        <Sider 
+          trigger={null} 
+          collapsible 
+          collapsed={collapsed}
+          breakpoint="lg"
+          collapsedWidth={screens.xs ? 0 : 80}
+          style={{ 
+            background: temaRengi.menuArka, 
+            borderRight: `1px solid ${temaRengi.cerceve}`,
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 100
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            
+            <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, flexShrink: 0 }} />
+            
+            <div className="menu-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+              <Menu 
+                theme="dark" 
+                selectedKeys={[location.pathname]} 
+                mode="inline" 
+                onClick={(e) => navigate(e.key)}
+                style={{ background: 'transparent', borderRight: 0 }} 
+                items={[
+                  { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
+                  { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
+                  { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
+                ]} 
+              />
+            </div>
+
+            <div style={{ 
+              padding: '16px', 
+              background: 'rgba(0,0,0,0.2)', 
+              display: 'flex', 
+              flexDirection: collapsed ? 'column' : 'row',
+              alignItems: 'center', 
+              justifyContent: collapsed ? 'center' : 'space-between',
+              borderTop: `1px solid ${temaRengi.cerceve}`,
+              flexShrink: 0,
+              gap: collapsed ? '12px' : '0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar style={{ backgroundColor: '#1890ff', flexShrink: 0 }}>UN</Avatar>
+                {!collapsed && (
+                  <div style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <Text style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>User NaFmme</Text>
+                    <Text style={{ color: '#8c98a4', fontSize: '12px' }}>Admin</Text>
+                  </div>
+                )}
+              </div>
+              <Button 
+                type="text" 
+                onClick={cikisYap} 
+                icon={<LogoutOutlined style={{ color: '#ff5630', fontSize: '16px' }} />} 
+                style={{ padding: collapsed ? 0 : undefined }}
+              />
+            </div>
+            
+          </div>
         </Sider>
 
-        <Layout style={{ background: temaRengi.genelArkaPlan }}>
+        <Layout style={{ 
+          background: temaRengi.genelArkaPlan,
+          marginLeft: screens.xs ? 0 : (collapsed ? 80 : 200),
+          transition: 'margin-left 0.2s',
+          minHeight: '100vh'
+        }}>
+          
           <Header style={{ 
-            padding: '0 24px', 
+            padding: screens.xs ? '0 12px' : '0 24px', 
             background: temaRengi.genelArkaPlan, 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            borderBottom: `1px solid ${temaRengi.cerceve}`
+            borderBottom: `1px solid ${temaRengi.cerceve}`,
+            position: 'sticky',
+            top: 0,
+            zIndex: 97
           }}>
-            <Title level={4} style={{ margin: 0, color: temaRengi.yazi }}>Stok Takip Paneli</Title>
-            <Switch 
-              checkedChildren="🌙" 
-              unCheckedChildren="☀️" 
-              checked={karanlikMod} 
-              onChange={(checked) => setKaranlikMod(checked)} 
-            />
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Button
+                type="text"
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+                style={{ fontSize: '16px', width: 48, height: 48, color: temaRengi.yazi, marginRight: screens.xs ? 0 : 16 }}
+              />
+              {!screens.xs && (
+                <Title level={4} style={{ margin: 0, color: temaRengi.yazi }}>Stok Takip Paneli</Title>
+              )}
+            </div>
+
+            <Space size={screens.xs ? "small" : "large"}>
+              <Button 
+                type="text" 
+                icon={karanlikMod ? <SunOutlined style={{ color: '#faad14' }} /> : <MoonOutlined style={{ color: '#1890ff' }} />} 
+                onClick={() => setKaranlikMod(!karanlikMod)} 
+                style={{ fontSize: '20px' }}
+              />
+              
+              <Dropdown menu={profilMenusu} placement="bottomRight">
+                <Avatar style={{ backgroundColor: '#1890ff', cursor: 'pointer' }} icon={<UserOutlined />} />
+              </Dropdown>
+            </Space>
+
           </Header>
           
-          <Content style={{ padding: '24px' }}>
+          <Content style={{ padding: screens.xs ? '12px' : '24px', overflowX: 'hidden' }}>
             <Routes>
               <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               <Route path="/urunler" element={<PrivateRoute><Urunler /></PrivateRoute>} />
               <Route path="/stok-hareketleri" element={<PrivateRoute><StokHareketleri /></PrivateRoute>} />
             </Routes>
           </Content>
+
         </Layout>
       </Layout>
     </ConfigProvider>

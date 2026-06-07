@@ -22,7 +22,6 @@ const Urunler = () => {
   }, []);
 
   const tabloSutunlari = [
-    { title: 'ID', dataIndex: 'urunID', key: 'urunID' },
     { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi' },
     { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi' },
     { title: 'Fiyat', dataIndex: 'birimFiyat', key: 'birimFiyat', render: (text) => <span>{text} TL</span> },
