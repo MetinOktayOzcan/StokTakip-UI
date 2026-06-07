@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Layout, Menu, theme, Typography, ConfigProvider, Switch } from 'antd';
 import { DashboardOutlined, AppstoreOutlined, TransactionOutlined } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import Urunler from './pages/Urunler';
 import StokHareketleri from './pages/StokHareketleri';
+import Login from './pages/login';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
+
+const PrivateRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
+};
 
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -28,6 +34,14 @@ const App = () => {
     cerceve: '#d9d9d9',
     menuArka: '#001529'
   };
+
+  if (location.pathname === '/login') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    );
+  }
 
   return (
     <ConfigProvider 
@@ -85,9 +99,9 @@ const App = () => {
           
           <Content style={{ padding: '24px' }}>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/urunler" element={<Urunler />} />
-              <Route path="/stok-hareketleri" element={<StokHareketleri />} />
+              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/urunler" element={<PrivateRoute><Urunler /></PrivateRoute>} />
+              <Route path="/stok-hareketleri" element={<PrivateRoute><StokHareketleri /></PrivateRoute>} />
             </Routes>
           </Content>
         </Layout>

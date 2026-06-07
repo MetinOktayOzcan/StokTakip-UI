@@ -11,8 +11,8 @@ const Dashboard = () => {
   const [hareketler, setHareketler] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5185/api/urunler').then(res => setUrunler(res.data));
-    axios.get('http://localhost:5185/api/stokhareketleri').then(res => setHareketler(res.data));
+    axios.get('https://localhost:7140/api/urunler').then(res => setUrunler(res.data));
+    axios.get('https://localhost:7140/api/stokhareketleri').then(res => setHareketler(res.data));
   }, []);
 
   const kritikStokUrunleri = urunler
@@ -32,7 +32,7 @@ const Dashboard = () => {
     return islemTarihi === bugun;
   }).length;
 
-  const son5Islem = hareketler.slice(0, 5);
+  const son4Islem = hareketler.slice(0, 4);
 
   const kategoriData = {};
   urunler.forEach(u => {
@@ -92,7 +92,17 @@ const Dashboard = () => {
 
   return (
     <div>
-      <Row gutter={[24, 24]}>
+      {/* Tablonun sayfa numaralarını her zaman en altta tutacak CSS hilesi */}
+      <style>{`
+        .sabit-tablo .ant-spin-container {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 230px; 
+        }
+      `}</style>
+
+      <Row gutter={[16, 16]}>
         <Col xs={24} sm={24} lg={8}>
           <Card style={kartStili}>
             <Statistic title="Bugünkü İşlemler" value={bugunkuIslemler} prefix={<RiseOutlined style={{ color: '#00b8d9' }} />} />
@@ -110,10 +120,10 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
         <Col xs={24} lg={16}>
           <Card title="Haftalık Stok Dalgalanması" style={kartStili}>
-            <div style={{ width: '100%', height: 300 }}>
+            <div style={{ width: '100%', height: 230 }}>
               <ResponsiveContainer>
                 <AreaChart data={grafikVerisi} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2d3a48" />
@@ -130,13 +140,13 @@ const Dashboard = () => {
 
         <Col xs={24} lg={8}>
           <Card title="Kategori Dağılımı" style={kartStili}>
-            <div style={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '100%', height: 230, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie 
                     data={pastaVerisi} 
-                    innerRadius={60} 
-                    outerRadius={90} 
+                    innerRadius={55} 
+                    outerRadius={80} 
                     paddingAngle={5} 
                     dataKey="value"
                     label={({ name }) => name}
@@ -153,13 +163,14 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
         <Col xs={24} lg={16}>
           <Card title="Kritik Stok Uyarıları (20 Adet Altı)" style={kartStili}>
             <Table 
+              className="sabit-tablo"
               dataSource={kritikStokUrunleri} 
               columns={kritikSutunlar} 
-              pagination={{ pageSize: 4 }} 
+              pagination={{ pageSize: 3 }} 
               rowKey="urunID"
               size="small"
             />
@@ -169,11 +180,11 @@ const Dashboard = () => {
         <Col xs={24} lg={8}>
           <Card title="Son Aktiviteler" style={kartStili}>
             <Timeline>
-              {son5Islem.map(islem => {
+              {son4Islem.map(islem => {
                 const renk = islem.islemTuru.toLowerCase().includes('giriş') || islem.islemTuru.toLowerCase().includes('giris') ? '#00b8d9' : '#ff5630';
                 const saat = new Date(islem.islemTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                 return (
-                  <Timeline.Item key={islem.hareketID} color={renk}>
+                  <Timeline.Item key={islem.hareketID} color={renk} style={{ paddingBottom: '16px' }}>
                     <span style={{ color: '#fff' }}>{islem.miktar} Adet {islem.urunAdi} {islem.islemTuru} yapıldı. ({saat})</span>
                   </Timeline.Item>
                 );

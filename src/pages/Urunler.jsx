@@ -8,7 +8,7 @@ const Urunler = () => {
 
   const verileriCek = async () => {
     try {
-      const response = await axios.get('http://localhost:5185/api/urunler');
+      const response = await axios.get('https://localhost:7140/api/urunler');
       setUrunler(response.data);
       setYukleniyor(false);
     } catch (error) {
