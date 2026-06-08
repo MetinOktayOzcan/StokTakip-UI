@@ -17,6 +17,8 @@ import Urunler from './pages/Urunler';
 import StokHareketleri from './pages/StokHareketleri';
 import Login from './pages/login';
 import { jwtDecode } from 'jwt-decode';
+import IslemGecmisi from './pages/IslemGecmisi';
+import { HistoryOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -182,6 +184,7 @@ const App = () => {
                   { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
                   { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
                   { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
+                  { key: '/islem-gecmisi', icon: <HistoryOutlined />, label: 'Sistem Logları' },
                 ]} 
               />
             </div>
@@ -305,6 +308,7 @@ const App = () => {
               <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               <Route path="/urunler" element={<PrivateRoute><Urunler /></PrivateRoute>} />
               <Route path="/stok-hareketleri" element={<PrivateRoute><StokHareketleri /></PrivateRoute>} />
+              <Route path="/islem-gecmisi" element={<PrivateRoute><IslemGecmisi /></PrivateRoute>} />
             </Routes>
           </Content>
 

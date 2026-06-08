@@ -9,10 +9,12 @@ const renkler = ['#00b8d9', '#36b37e', '#ffab00', '#ff5630', '#6554c0', '#00aeb7
 const Dashboard = () => {
   const [urunler, setUrunler] = useState([]);
   const [hareketler, setHareketler] = useState([]);
+  const [loglar, setLoglar] = useState([]);
 
   useEffect(() => {
     axios.get('/api/urunler').then(res => setUrunler(res.data));
     axios.get('/api/stokhareketleri').then(res => setHareketler(res.data));
+    axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)); 
   }, []);
 
   const kritikStokUrunleri = urunler
@@ -32,7 +34,7 @@ const Dashboard = () => {
     return islemTarihi === bugun;
   }).length;
 
-  const son4Islem = hareketler.slice(0, 4);
+  const sonLoglar = loglar.slice(0, 4);
 
   const kategoriData = {};
   urunler.forEach(u => {
@@ -48,7 +50,6 @@ const Dashboard = () => {
     name: k,
     value: kategoriData[k]
   }));
-
 
   const gunIsimleri = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
   const dinamikGrafikVerisi = [...Array(7)].map((_, i) => {
@@ -81,9 +82,10 @@ const Dashboard = () => {
     { title: 'Ürün', dataIndex: 'urunAdi', key: 'urunAdi', fontWeight: 'bold' },
     { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi' },
     { 
-      title: 'Stok Durumu', 
+      title: 'Stok', 
       dataIndex: 'stokMiktari', 
       key: 'stokMiktari',
+      width: '120px',
       render: (stok) => (
         <Tag 
           style={{ 
@@ -92,10 +94,11 @@ const Dashboard = () => {
             border: 'none',
             padding: '2px 8px',
             borderRadius: '6px',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            margin: 0
           }}
         >
-          {stok === 0 ? 'Tükendi (0)' : `${stok} Adet Kaldı`}
+          {stok === 0 ? 'Tükendi' : `${stok} Kaldı`}
         </Tag>
       )
     }
@@ -116,23 +119,32 @@ const Dashboard = () => {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          min-height: 230px; 
+          min-height: 190px; 
+        }
+        .sabit-tablo .ant-table-pagination.ant-pagination {
+          margin: 12px 0 0 0 !important;
+        }
+        .ant-timeline-item {
+          padding-bottom: 12px !important;
+        }
+        .ant-timeline-item:last-child {
+          padding-bottom: 0 !important;
         }
       `}</style>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={24} lg={8}>
-          <Card style={kartStili}>
+          <Card style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
             <Statistic title="Bugünkü İşlemler" value={bugunkuIslemler} prefix={<RiseOutlined style={{ color: '#00b8d9' }} />} />
           </Card>
         </Col>
         <Col xs={24} sm={24} lg={8}>
-          <Card style={kartStili}>
+          <Card style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
             <Statistic title="Depodaki Toplam Ürün" value={toplamAdet} prefix={<ShoppingOutlined style={{ color: '#ffab00' }} />} />
           </Card>
         </Col>
         <Col xs={24} sm={24} lg={8}>
-          <Card style={kartStili}>
+          <Card style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
             <Statistic title="Kritik Stok Uyarısı" value={kritikStok} valueStyle={{ color: '#ff5630' }} prefix={<WarningOutlined />} />
           </Card>
         </Col>
@@ -140,8 +152,8 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
         <Col xs={24} lg={16}>
-          <Card title="Haftalık Stok Dalgalanması" style={kartStili}>
-            <div style={{ width: '100%', height: 230 }}>
+          <Card title="Haftalık Stok Dalgalanması" style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
+            <div style={{ width: '100%', height: 210 }}>
               <ResponsiveContainer>
                 <AreaChart data={dinamikGrafikVerisi} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2d3a48" />
@@ -157,14 +169,14 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="Kategori Dağılımı" style={kartStili}>
-            <div style={{ width: '100%', height: 230, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <Card title="Kategori Dağılımı" style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
+            <div style={{ width: '100%', height: 210, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie 
                     data={pastaVerisi} 
-                    innerRadius={55} 
-                    outerRadius={80} 
+                    innerRadius={45} 
+                    outerRadius={70} 
                     paddingAngle={5} 
                     dataKey="value"
                     label={({ name }) => name}
@@ -183,12 +195,12 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
         <Col xs={24} lg={16}>
-          <Card title="Kritik Stok Uyarıları (20 Adet Altı)" style={kartStili}>
+          <Card title="Kritik Stok Uyarıları (20 Adet Altı)" style={kartStili} bodyStyle={{ padding: '16px 24px' }}>
             <Table 
               className="sabit-tablo"
               dataSource={kritikStokUrunleri} 
               columns={kritikSutunlar} 
-              pagination={{ pageSize: 3 }} 
+              pagination={{ pageSize: 6 }} 
               rowKey="urunID"
               size="small"
             />
@@ -196,17 +208,42 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card title="Son Aktiviteler" style={kartStili}>
+          <Card title="Son Aktiviteler" style={{...kartStili, overflow: 'hidden'}} bodyStyle={{ padding: '16px 24px' }}>
             <Timeline>
-              {son4Islem.map(islem => {
-                const renk = islem.islemTuru.toLowerCase().includes('giriş') || islem.islemTuru.toLowerCase().includes('giris') ? '#00b8d9' : '#ff5630';
-                const saat = new Date(islem.islemTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+              {sonLoglar.map(log => {
+                let noktaRengi = 'blue';
+                const islem = log.islemTipi?.toLowerCase() || '';
+                
+                if (islem.includes('ekle') || islem.includes('giriş')) noktaRengi = 'green';
+                if (islem.includes('sil') || islem.includes('çıkış')) noktaRengi = 'red';
+                if (islem.includes('güncelle')) noktaRengi = 'orange';
+
+                const saat = new Date(log.islemTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
                 return (
-                  <Timeline.Item key={islem.hareketID} color={renk} style={{ paddingBottom: '16px' }}>
-                    <span style={{ color: '#fff' }}>{islem.miktar} Adet {islem.urunAdi} {islem.islemTuru} yapıldı. ({saat})</span>
+                  <Timeline.Item key={log.logID || log.logId} color={noktaRengi}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography.Text strong style={{ fontSize: '13px' }}>
+                        {log.islemTipi}
+                      </Typography.Text>
+                      
+                      <Typography.Text style={{ fontSize: '12px', marginTop: '2px', lineHeight: '1.4' }} ellipsis={{ tooltip: log.detay }}>
+                        {log.detay}
+                      </Typography.Text>
+                      
+                      <div style={{ marginTop: '2px', fontSize: '11px', display: 'flex', gap: '8px' }}>
+                        <Typography.Text type="secondary">👤 {log.kullanici}</Typography.Text>
+                        <Typography.Text type="secondary">🕒 {saat}</Typography.Text>
+                      </div>
+                    </div>
                   </Timeline.Item>
                 );
               })}
+              {sonLoglar.length === 0 && (
+                <Typography.Text type="secondary">
+                  Henüz bir aktivite bulunmuyor.
+                </Typography.Text>
+              )}
             </Timeline>
           </Card>
         </Col>
