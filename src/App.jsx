@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Urunler from './pages/Urunler';
 import StokHareketleri from './pages/StokHareketleri';
 import Login from './pages/login';
+import { jwtDecode } from 'jwt-decode';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -29,6 +30,7 @@ const PrivateRoute = ({ children }) => {
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [karanlikMod, setKaranlikMod] = useState(true);
+  const [kullaniciBilgileri, setKullaniciBilgileri] = useState({ adSoyad: '', rol: '', basHarfler: '' });
   const navigate = useNavigate();
   const location = useLocation();
   const screens = useBreakpoint();
@@ -40,6 +42,24 @@ const App = () => {
       setCollapsed(false);
     }
   }, [screens]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const adSoyad = decoded.AdSoyad || decoded.unique_name || 'Kullanıcı';
+        const rol = decoded.role || 'Admin';
+        
+        const formatliIsim = adSoyad.charAt(0).toUpperCase() + adSoyad.slice(1);
+        const basHarfler = formatliIsim.charAt(0).toUpperCase();
+
+        setKullaniciBilgileri({ adSoyad: formatliIsim, rol, basHarfler });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }, [location.pathname]);
 
   const temaRengi = karanlikMod ? {
     genelArkaPlan: '#161c24',
@@ -166,32 +186,69 @@ const App = () => {
               />
             </div>
 
-            <div style={{ 
-              padding: '16px', 
+           <div style={{ 
+              padding: collapsed ? '16px 0' : '16px', 
               background: 'rgba(0,0,0,0.2)', 
               display: 'flex', 
-              flexDirection: collapsed ? 'column' : 'row',
+              flexDirection: 'column',
               alignItems: 'center', 
-              justifyContent: collapsed ? 'center' : 'space-between',
+              justifyContent: 'center',
               borderTop: `1px solid ${temaRengi.cerceve}`,
               flexShrink: 0,
-              gap: collapsed ? '12px' : '0'
+              width: '100%',
+              boxSizing: 'border-box',
+              overflow: 'hidden' 
             }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar style={{ backgroundColor: '#1890ff', flexShrink: 0 }}>UN</Avatar>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: collapsed ? 'column' : 'row', 
+                alignItems: 'center', 
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                width: '100%',
+                padding: collapsed ? '0' : '0 8px',
+                gap: collapsed ? '12px' : '12px',
+                minWidth: 0
+              }}>
+                <Avatar style={{ backgroundColor: '#1890ff', flexShrink: 0 }}>
+                  {kullaniciBilgileri.basHarfler}
+                </Avatar>
+                
                 {!collapsed && (
-                  <div style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <Text style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>User NaFmme</Text>
-                    <Text style={{ color: '#8c98a4', fontSize: '12px' }}>Admin</Text>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                    <Text style={{ 
+                      color: '#fff', 
+                      fontSize: '14px', 
+                      fontWeight: 'bold', 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      display: 'block',
+                      width: '100%'
+                    }}>
+                      {kullaniciBilgileri.adSoyad}
+                    </Text>
+                    <Text style={{ color: '#8c98a4', fontSize: '12px', marginTop: 2 }}>
+                      {kullaniciBilgileri.rol}
+                    </Text>
                   </div>
                 )}
               </div>
+
               <Button 
                 type="text" 
                 onClick={cikisYap} 
                 icon={<LogoutOutlined style={{ color: '#ff5630', fontSize: '16px' }} />} 
-                style={{ padding: collapsed ? 0 : undefined }}
-              />
+                style={{ 
+                  marginTop: collapsed ? 16 : 12,
+                  width: collapsed ? '32px' : '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexShrink: 0 
+                }}
+              >
+                {!collapsed && <span style={{ marginLeft: 8, color: '#ff5630' }}>Çıkış Yap</span>}
+              </Button>
             </div>
             
           </div>
