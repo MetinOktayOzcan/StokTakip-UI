@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Grid, List, Card, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Grid, List, Card } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, TagsOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -25,7 +25,6 @@ const Kategoriler = () => {
       setYukleniyor(false);
     } catch (error) {
       setYukleniyor(false);
-      message.error("Kategoriler yüklenemedi.");
     }
   };
 
@@ -44,20 +43,20 @@ const Kategoriler = () => {
     }
   }, [aramaMetni, kategoriler]);
 
-  const islemKaydet = async (degerler) => {
+  const handleSave = async (degerler) => {
     try {
       const gercekID = seciliKategori ? (seciliKategori.kategoriID || seciliKategori.kategoriId || seciliKategori.id) : 0;
       
-      const gonderilecekVeri = {
+      const payload = {
         kategoriID: gercekID,
         kategoriAdi: degerler.kategoriAdi
       };
 
       if (seciliKategori) {
-        await axios.put(`/api/kategoriler/${gercekID}`, gonderilecekVeri);
+        await axios.put(`/api/kategoriler/${gercekID}`, payload);
         message.success("Kategori başarıyla güncellendi.");
       } else {
-        await axios.post('/api/kategoriler', gonderilecekVeri);
+        await axios.post('/api/kategoriler', payload);
         message.success("Yeni kategori eklendi.");
       }
       setModalAcik(false);
@@ -69,7 +68,7 @@ const Kategoriler = () => {
     }
   };
 
-  const kategoriSil = async (kategori) => {
+  const handleDelete = async (kategori) => {
     const gercekID = kategori.kategoriID || kategori.kategoriId || kategori.id;
     try {
       await axios.delete(`/api/kategoriler/${gercekID}`);
@@ -80,12 +79,10 @@ const Kategoriler = () => {
     }
   };
 
-  const modalAc = (kategori = null) => {
+  const openModal = (kategori = null) => {
     setSeciliKategori(kategori);
     if (kategori) {
-      form.setFieldsValue({
-        kategoriAdi: kategori.kategoriAdi
-      });
+      form.setFieldsValue({ kategoriAdi: kategori.kategoriAdi });
     } else {
       form.resetFields();
     }
@@ -97,17 +94,25 @@ const Kategoriler = () => {
       title: 'Kategori Adı', 
       dataIndex: 'kategoriAdi', 
       key: 'kategoriAdi', 
-      render: (text) => <Tag color="blue" variant="filled"><TagsOutlined style={{ marginRight: 4 }}/>{text}</Tag> 
+      render: (text) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ background: '#F4F4F5', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+            <TagsOutlined style={{ color: '#71717A' }} />
+          </div>
+          <span style={{ fontWeight: 500, color: '#18181B' }}>{text}</span>
+        </div>
+      ) 
     },
     {
       title: 'İşlemler',
       key: 'islemler',
       width: '15%',
+      align: 'right',
       render: (_, record) => (
         <Space size="middle">
-          <Button type="text" icon={<EditOutlined style={{ color: '#1890ff', fontSize: '16px' }} />} onClick={() => modalAc(record)} />
-          <Popconfirm title="Kategoriyi silmek istediğinize emin misiniz?" onConfirm={() => kategoriSil(record)} okText="Evet" cancelText="Hayır" placement="left">
-            <Button type="text" danger icon={<DeleteOutlined style={{ fontSize: '16px' }} />} />
+          <Button type="text" icon={<EditOutlined style={{ color: '#71717A' }} />} onClick={() => openModal(record)} />
+          <Popconfirm title="Emin misiniz?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır" placement="left">
+            <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       )
@@ -116,14 +121,22 @@ const Kategoriler = () => {
 
   const mobilListeRender = (record) => (
     <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card size="small" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', background: 'var(--ant-color-bg-container)' }} bodyStyle={{ padding: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <Tag color="blue" variant="filled" style={{ margin: 0 }}><TagsOutlined style={{ marginRight: 4 }}/>{record.kategoriAdi}</Tag>
+      <Card 
+        style={{ width: '100%', borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <div style={{ background: '#F4F4F5', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+            <TagsOutlined style={{ color: '#71717A' }} />
+          </div>
+          <span style={{ fontWeight: 600, color: '#18181B', fontSize: 15 }}>{record.kategoriAdi}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px' }}>
-          <Button size="small" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => modalAc(record)}>Düzenle</Button>
-          <Popconfirm title="Emin misiniz?" onConfirm={() => kategoriSil(record)} okText="Evet" cancelText="Hayır">
-            <Button size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+        
+        <div style={{ borderTop: '1px solid #E4E4E7', margin: '0 0 12px 0' }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
+          <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
+            <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
           </Popconfirm>
         </div>
       </Card>
@@ -131,23 +144,25 @@ const Kategoriler = () => {
   );
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
-        <h2 style={{ margin: 0 }}>Kategori Yönetimi</h2>
-        <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => modalAc()}>
-          Yeni Kategori Ekle
-        </Button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#18181B' }}>Kategori Yönetimi</h2>
+        <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()} style={{ flex: isMobile ? 1 : 'none', borderRadius: 20, background: '#2563EB', fontWeight: 500, height: 40 }}>
+            Yeni Kategori Ekle
+          </Button>
+        </div>
       </div>
 
-      <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
+      <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
         <Input 
           placeholder="Kategori adı ara..." 
-          prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
-          style={{ width: isMobile ? '100%' : 400 }}
+          prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+          style={{ width: '100%', borderRadius: 8, height: 40 }}
           allowClear
           onChange={(e) => setAramaMetni(e.target.value)}
         />
-      </div>
+      </Card>
 
       {isMobile ? (
         <List 
@@ -158,23 +173,34 @@ const Kategoriler = () => {
           pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} 
         />
       ) : (
-        <Table 
-          dataSource={filtrelenmisKategoriler} 
-          columns={tabloSutunlari} 
-          rowKey={(r) => r.kategoriID || r.kategoriId || Math.random().toString()} 
-          loading={yukleniyor} 
-          scroll={{ x: 'max-content' }} 
-        />
+        <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+          <Table 
+            dataSource={filtrelenmisKategoriler} 
+            columns={tabloSutunlari} 
+            rowKey={(r) => r.kategoriID || r.kategoriId || Math.random().toString()} 
+            loading={yukleniyor} 
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            rowClassName={() => 'custom-row-hover'}
+            style={{ background: 'transparent' }}
+          />
+        </Card>
       )}
 
       <Modal title={seciliKategori ? "Kategoriyi Düzenle" : "Yeni Kategori Ekle"} open={modalAcik} onOk={() => form.submit()} onCancel={() => { setModalAcik(false); setSeciliKategori(null); form.resetFields(); }} okText="Kaydet" cancelText="İptal" destroyOnHidden forceRender>
-        <Form form={form} layout="vertical" onFinish={islemKaydet}>
+        <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item label="Kategori Adı" name="kategoriAdi" rules={[{ required: true, message: 'Kategori adı zorunlu!' }]}>
-            <Input placeholder="Örn: Ağ Cihazları" />
+            <Input placeholder="Örn: Ağ Cihazları" size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
         </Form>
       </Modal>
-    </>
+
+      <style>{`
+        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
+        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+      `}</style>
+    </div>
   );
 };
 

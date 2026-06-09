@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Select, DatePicker, Tag, Grid, List, Card, Button } from 'antd';
+import { Table, Input, Select, DatePicker, Grid, List, Card, Button } from 'antd';
 import { SearchOutlined, ClockCircleOutlined, UserOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -19,7 +19,7 @@ const IslemGecmisi = () => {
   const screens = useBreakpoint();
   const isMobile = screens.xs;
 
-  const verileriCek = async () => {
+  const fetchLogs = async () => {
     try {
       const response = await axios.get('/api/islemgecmisi');
       setLoglar(response.data);
@@ -31,7 +31,7 @@ const IslemGecmisi = () => {
   };
 
   useEffect(() => {
-    verileriCek();
+    fetchLogs();
   }, []);
 
   useEffect(() => {
@@ -62,15 +62,15 @@ const IslemGecmisi = () => {
     setFiltrelenmisLoglar(sonuc);
   }, [aramaMetni, tarihAraligi, tipFiltresi, loglar]);
 
-  const renkBelirle = (tip) => {
+  const getTagStyle = (tip) => {
     const kucukTip = tip?.toLowerCase() || '';
-    if (kucukTip.includes('ekle') || kucukTip.includes('giriş')) return 'green';
-    if (kucukTip.includes('sil') || kucukTip.includes('çıkış')) return 'red';
-    if (kucukTip.includes('güncelle')) return 'orange';
-    return 'blue';
+    if (kucukTip.includes('ekle') || kucukTip.includes('giriş')) return { color: '#059669', bg: '#D1FAE5' };
+    if (kucukTip.includes('sil') || kucukTip.includes('çıkış')) return { color: '#E11D48', bg: '#FEE2E2' };
+    if (kucukTip.includes('güncelle')) return { color: '#D97706', bg: '#FEF3C7' };
+    return { color: '#2563EB', bg: '#DBEAFE' };
   };
 
-  const excelIndir = () => {
+  const handleExport = () => {
     const formatliVeri = filtrelenmisLoglar.map(l => ({
       'Tarih': new Date(l.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
       'İşlem Tipi': l.islemTipi,
@@ -90,14 +90,17 @@ const IslemGecmisi = () => {
       dataIndex: 'islemTipi',
       key: 'islemTipi',
       width: '15%',
-      render: (text) => <Tag color={renkBelirle(text)} bordered={false} style={{ fontWeight: 500, padding: '2px 8px', borderRadius: '4px' }}>{text?.toUpperCase()}</Tag>
+      render: (text) => {
+        const style = getTagStyle(text);
+        return <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>{text?.toUpperCase()}</span>
+      }
     },
     {
       title: 'Detay',
       dataIndex: 'detay',
       key: 'detay',
       width: '50%',
-      render: (text) => <span style={{ color: 'var(--ant-color-text)' }}>{text}</span>
+      render: (text) => <span style={{ color: '#18181B', fontWeight: 500 }}>{text}</span>
     },
     {
       title: 'Kullanıcı',
@@ -105,8 +108,10 @@ const IslemGecmisi = () => {
       key: 'kullanici',
       width: '15%',
       render: (text) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
-          <UserOutlined style={{ color: '#8c98a4' }} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, color: '#3F3F46' }}>
+          <div style={{ background: '#F4F4F5', padding: '4px', borderRadius: '50%', display: 'flex' }}>
+            <UserOutlined style={{ color: '#71717A', fontSize: 12 }} />
+          </div>
           {text}
         </span>
       )
@@ -117,7 +122,7 @@ const IslemGecmisi = () => {
       key: 'islemTarihi',
       width: '20%',
       render: (text) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8c98a4', fontSize: '13px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#71717A', fontSize: '13px' }}>
           <ClockCircleOutlined />
           {new Date(text).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
         </span>
@@ -125,56 +130,64 @@ const IslemGecmisi = () => {
     }
   ];
 
-  const mobilListeRender = (record) => (
-    <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card 
-        size="small" 
-        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', background: 'var(--ant-color-bg-container)' }}
-        bodyStyle={{ padding: '16px' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <Tag color={renkBelirle(record.islemTipi)} bordered={false} style={{ margin: 0, fontWeight: 500, borderRadius: '4px' }}>
-            {record.islemTipi?.toUpperCase()}
-          </Tag>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8c98a4', fontSize: '12px' }}>
-            <ClockCircleOutlined />
-            {new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
-          </span>
-        </div>
-        
-        <div style={{ color: 'var(--ant-color-text)', fontSize: '14px', lineHeight: '1.5', marginBottom: 16 }}>
-          {record.detay}
-        </div>
+  const mobilListeRender = (record) => {
+    const style = getTagStyle(record.islemTipi);
+    
+    return (
+      <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
+        <Card 
+          style={{ width: '100%', borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
+          bodyStyle={{ padding: 16 }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
+              {record.islemTipi?.toUpperCase()}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A1A1AA', fontSize: '12px' }}>
+              <ClockCircleOutlined />
+              {new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
+            </span>
+          </div>
+          
+          <div style={{ color: '#18181B', fontSize: '14px', lineHeight: '1.5', marginBottom: 16, fontWeight: 500 }}>
+            {record.detay}
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px', color: '#8c98a4', fontSize: '13px' }}>
-          <UserOutlined />
-          <span style={{ fontWeight: 500, color: 'var(--ant-color-text)' }}>{record.kullanici}</span>
-        </div>
-      </Card>
-    </List.Item>
-  );
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid #E4E4E7', paddingTop: '12px', color: '#3F3F46', fontSize: '13px', fontWeight: 500 }}>
+            <div style={{ background: '#F4F4F5', padding: '4px', borderRadius: '50%', display: 'flex' }}>
+              <UserOutlined style={{ color: '#71717A', fontSize: 12 }} />
+            </div>
+            {record.kullanici}
+          </div>
+        </Card>
+      </List.Item>
+    );
+  };
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
-        <h2 style={{ margin: 0 }}>Sistem Logları</h2>
-        <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#18181B' }}>Sistem Logları</h2>
+          <span style={{ color: '#71717A', fontSize: 14 }}>Sistemdeki tüm aktiviteleri ve kullanıcı işlemlerini izleyin</span>
+        </div>
+        <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, borderColor: '#E4E4E7', color: '#3F3F46', fontWeight: 500, height: 40, width: isMobile ? '100%' : 'auto' }}>
           Excel İndir
         </Button>
       </div>
 
-      <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '16px', flexWrap: 'wrap' }}>
+      <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 16 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>
           <Input 
-            placeholder="Detay, Kullanıcı veya İşlem Tipi ara..." 
-            prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
-            style={{ width: isMobile ? '100%' : 300 }}
+            placeholder="Detay veya kullanıcı ara..." 
+            prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+            style={{ width: isMobile ? '100%' : 320, borderRadius: 8 }}
             allowClear
             onChange={(e) => setAramaMetni(e.target.value)}
           />
           <Select
-            placeholder="İşlem Tipi Filtrele"
-            style={{ width: isMobile ? '100%' : 180 }}
+            placeholder="İşlem Tipi"
+            style={{ width: isMobile ? '100%' : 200 }}
             allowClear
             onChange={(value) => setTipFiltresi(value)}
             options={[
@@ -186,11 +199,11 @@ const IslemGecmisi = () => {
           />
           <RangePicker 
             placeholder={['Başlangıç', 'Bitiş']}
-            style={{ width: isMobile ? '100%' : 280, flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250 }}
+            style={{ flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250, borderRadius: 8 }}
             onChange={(dates) => setTarihAraligi(dates)}
           />
         </div>
-      </div>
+      </Card>
 
       {isMobile ? (
         <List
@@ -201,16 +214,27 @@ const IslemGecmisi = () => {
           pagination={{ position: 'bottom', align: 'center', pageSize: 15 }}
         />
       ) : (
-        <Table 
-          dataSource={filtrelenmisLoglar} 
-          columns={tabloSutunlari} 
-          rowKey={(record) => record.logID || record.logId}
-          loading={yukleniyor} 
-          scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 15 }}
-        />
+        <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 0 }}>
+          <Table 
+            dataSource={filtrelenmisLoglar} 
+            columns={tabloSutunlari} 
+            rowKey={(record) => record.logID || record.logId}
+            loading={yukleniyor} 
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 15, position: ['bottomCenter'] }}
+            rowClassName={() => 'custom-row-hover'}
+            style={{ background: 'transparent' }}
+          />
+        </Card>
       )}
-    </>
+      
+      <style>{`
+        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
+        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+        .ant-picker { border-radius: 8px; border-color: #E4E4E7; }
+      `}</style>
+    </div>
   );
 };
 

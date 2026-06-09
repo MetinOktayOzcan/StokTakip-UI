@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, message, Popconfirm, Tag, Grid, List, Card } from 'antd';
-import { SearchOutlined, EditOutlined, DeleteOutlined, UserAddOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, Space, message, Popconfirm, Grid, Card, List } from 'antd';
+import { SearchOutlined, EditOutlined, DeleteOutlined, UserAddOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { useBreakpoint } = Grid;
@@ -17,7 +17,7 @@ const Kullanicilar = () => {
   const screens = useBreakpoint();
   const isMobile = screens.xs;
 
-  const verileriCek = async () => {
+  const fetchKullanicilar = async () => {
     try {
       const response = await axios.get('/api/kullanicilar');
       setKullanicilar(response.data);
@@ -25,12 +25,11 @@ const Kullanicilar = () => {
       setYukleniyor(false);
     } catch (error) {
       setYukleniyor(false);
-      message.error("Kullanıcılar yüklenemedi.");
     }
   };
 
   useEffect(() => {
-    verileriCek();
+    fetchKullanicilar();
   }, []);
 
   useEffect(() => {
@@ -46,11 +45,11 @@ const Kullanicilar = () => {
     }
   }, [aramaMetni, kullanicilar]);
 
-  const islemKaydet = async (degerler) => {
+  const handleSave = async (degerler) => {
     try {
       const gercekID = seciliKullanici ? (seciliKullanici.kullaniciID || seciliKullanici.kullaniciId || seciliKullanici.id) : 0;
       
-      const gonderilecekVeri = {
+      const payload = {
         id: gercekID,
         kullaniciAdi: degerler.kullaniciAdi,
         adSoyad: degerler.adSoyad,
@@ -59,33 +58,33 @@ const Kullanicilar = () => {
       };
 
       if (seciliKullanici) {
-        await axios.put(`/api/kullanicilar/${gercekID}`, gonderilecekVeri);
-        message.success("Kullanıcı güncellendi.");
+        await axios.put(`/api/kullanicilar/${gercekID}`, payload);
+        message.success("Kullanıcı başarıyla güncellendi.");
       } else {
-        await axios.post('/api/kullanicilar', gonderilecekVeri);
+        await axios.post('/api/kullanicilar', payload);
         message.success("Yeni kullanıcı eklendi.");
       }
       setModalAcik(false);
       form.resetFields();
       setSeciliKullanici(null);
-      verileriCek();
+      fetchKullanicilar();
     } catch (error) {
       message.error(error.response?.data?.mesaj || "Kayıt işlemi başarısız.");
     }
   };
 
-  const kullaniciSil = async (kullanici) => {
+  const handleDelete = async (kullanici) => {
     const gercekID = kullanici.kullaniciID || kullanici.kullaniciId || kullanici.id;
     try {
       await axios.delete(`/api/kullanicilar/${gercekID}`);
       message.success("Kullanıcı sistemden silindi.");
-      verileriCek();
+      fetchKullanicilar();
     } catch (error) {
       message.error("Silme başarısız.");
     }
   };
 
-  const modalAc = (kullanici = null) => {
+  const openModal = (kullanici = null) => {
     setSeciliKullanici(kullanici);
     if (kullanici) {
       form.setFieldsValue({
@@ -100,27 +99,42 @@ const Kullanicilar = () => {
     setModalAcik(true);
   };
 
-  const rolRengi = (rol) => {
+  const getRoleBadge = (rol) => {
     const kucukRol = rol?.toLowerCase() || '';
-    if (kucukRol === 'admin') return 'red';
-    if (kucukRol === 'depo sorumlusu') return 'blue';
-    if (kucukRol === 'izleyici') return 'default';
-    return 'purple';
+    if (kucukRol === 'admin') return <span style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>ADMIN</span>;
+    if (kucukRol === 'depo sorumlusu') return <span style={{ backgroundColor: '#F8FAFC', color: '#475569', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>DEPO SORUMLUSU</span>;
+    return <span style={{ backgroundColor: '#F4F4F5', color: '#71717A', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>İZLEYİCİ</span>;
   };
 
   const tabloSutunlari = [
-    { title: 'Ad Soyad', dataIndex: 'adSoyad', key: 'adSoyad', render: (text) => <span style={{ fontWeight: 500 }}>{text || '-'}</span> },
-    { title: 'Kullanıcı Adı', dataIndex: 'kullaniciAdi', key: 'kullaniciAdi', render: (text) => <span style={{ color: '#8c98a4' }}>@{text}</span> },
-    { title: 'Rol Yetkisi', dataIndex: 'rol', key: 'rol', render: (text) => <Tag color={rolRengi(text)} bordered={false}><SafetyOutlined style={{ marginRight: 4 }}/>{text}</Tag> },
+    { 
+      title: 'İsim Soyisim', 
+      dataIndex: 'adSoyad', 
+      key: 'adSoyad', 
+      render: (text) => <span style={{ fontWeight: 600, color: '#18181B' }}>{text || '-'}</span> 
+    },
+    { 
+      title: 'Kullanıcı Adı', 
+      dataIndex: 'kullaniciAdi', 
+      key: 'kullaniciAdi', 
+      render: (text) => <span style={{ color: '#71717A', fontWeight: 500 }}>@{text}</span> 
+    },
+    { 
+      title: 'Rol', 
+      dataIndex: 'rol', 
+      key: 'rol', 
+      render: (text) => getRoleBadge(text) 
+    },
     {
       title: 'İşlemler',
       key: 'islemler',
       width: '15%',
+      align: 'right',
       render: (_, record) => (
         <Space size="middle">
-          <Button type="text" icon={<EditOutlined style={{ color: '#1890ff', fontSize: '16px' }} />} onClick={() => modalAc(record)} />
-          <Popconfirm title="Kullanıcıyı silmek istediğinize emin misiniz?" onConfirm={() => kullaniciSil(record)} okText="Evet" cancelText="Hayır" placement="left">
-            <Button type="text" danger icon={<DeleteOutlined style={{ fontSize: '16px' }} />} />
+          <Button type="text" icon={<EditOutlined style={{ color: '#71717A' }} />} onClick={() => openModal(record)} />
+          <Popconfirm title="Emin misiniz?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır" placement="left">
+            <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       )
@@ -129,16 +143,24 @@ const Kullanicilar = () => {
 
   const mobilListeRender = (record) => (
     <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card size="small" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', background: 'var(--ant-color-bg-container)' }} bodyStyle={{ padding: '16px' }}>
+      <Card 
+        style={{ width: '100%', borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }}
+        bodyStyle={{ padding: 16 }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: '15px' }}>{record.adSoyad || record.kullaniciAdi}</div>
-          <Tag color={rolRengi(record.rol)} bordered={false} style={{ margin: 0 }}><SafetyOutlined style={{ marginRight: 4 }}/>{record.rol}</Tag>
+          <span style={{ fontWeight: 600, color: '#18181B', fontSize: 15 }}>{record.adSoyad || record.kullaniciAdi}</span>
+          {getRoleBadge(record.rol)}
         </div>
-        <div style={{ color: '#8c98a4', fontSize: '13px', marginBottom: 16 }}>@{record.kullaniciAdi}</div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px' }}>
-          <Button size="small" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => modalAc(record)}>Düzenle</Button>
-          <Popconfirm title="Emin misiniz?" onConfirm={() => kullaniciSil(record)} okText="Evet" cancelText="Hayır">
-            <Button size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+
+        <div style={{ color: '#71717A', fontSize: 13, marginBottom: 12 }}>
+          @{record.kullaniciAdi}
+        </div>
+        
+        <div style={{ borderTop: '1px solid #E4E4E7', margin: '0 0 12px 0' }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
+          <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
+            <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
           </Popconfirm>
         </div>
       </Card>
@@ -146,51 +168,76 @@ const Kullanicilar = () => {
   );
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
-        <h2 style={{ margin: 0 }}>Kullanıcı Yönetimi</h2>
-        <Button type="primary" size={isMobile ? "middle" : "large"} icon={<UserAddOutlined />} onClick={() => modalAc()}>
-          Yeni Kullanıcı Ekle
-        </Button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#18181B' }}>Kullanıcı Yönetimi</h2>
+        <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
+          <Button type="primary" icon={<UserAddOutlined />} onClick={() => openModal()} style={{ flex: isMobile ? 1 : 'none', borderRadius: 20, background: '#2563EB', fontWeight: 500, height: 40 }}>
+            Yeni Kullanıcı Ekle
+          </Button>
+        </div>
       </div>
 
-      <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
+      <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
         <Input 
           placeholder="İsim, kullanıcı adı veya rol ara..." 
-          prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
-          style={{ width: isMobile ? '100%' : 400 }}
+          prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+          style={{ width: '100%', borderRadius: 8, height: 40 }}
           allowClear
           onChange={(e) => setAramaMetni(e.target.value)}
         />
-      </div>
+      </Card>
 
       {isMobile ? (
-        <List dataSource={filtrelenmisKullanicilar} renderItem={mobilListeRender} loading={yukleniyor} rowKey={(r) => r.kullaniciID || r.id} pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} />
+        <List 
+          dataSource={filtrelenmisKullanicilar} 
+          renderItem={mobilListeRender} 
+          loading={yukleniyor} 
+          rowKey={(r) => r.kullaniciID || r.id} 
+          pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} 
+        />
       ) : (
-        <Table dataSource={filtrelenmisKullanicilar} columns={tabloSutunlari} rowKey={(r) => r.kullaniciID || r.id} loading={yukleniyor} scroll={{ x: 'max-content' }} />
+        <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+          <Table 
+            dataSource={filtrelenmisKullanicilar} 
+            columns={tabloSutunlari} 
+            rowKey={(r) => r.kullaniciID || r.id} 
+            loading={yukleniyor} 
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            rowClassName={() => 'custom-row-hover'}
+            style={{ background: 'transparent' }}
+          />
+        </Card>
       )}
 
       <Modal title={seciliKullanici ? "Kullanıcıyı Düzenle" : "Yeni Kullanıcı Ekle"} open={modalAcik} onOk={() => form.submit()} onCancel={() => { setModalAcik(false); setSeciliKullanici(null); form.resetFields(); }} okText="Kaydet" cancelText="İptal" destroyOnHidden>
-        <Form form={form} layout="vertical" onFinish={islemKaydet}>
+        <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item label="Ad Soyad" name="adSoyad" rules={[{ required: true, message: 'Ad Soyad giriniz!' }]}>
-            <Input placeholder="Sistem Yöneticisi" />
+            <Input placeholder="Örn: Yaver Polat" size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
           <Form.Item label="Kullanıcı Adı" name="kullaniciAdi" rules={[{ required: true, message: 'Kullanıcı adı zorunlu!' }]}>
-            <Input placeholder="admin.user" disabled={!!seciliKullanici} />
+            <Input placeholder="admin.user" size="large" style={{ borderRadius: 8 }} disabled={!!seciliKullanici} />
           </Form.Item>
           <Form.Item label="Rol / Yetki" name="rol" rules={[{ required: true, message: 'Rol seçimi zorunlu!' }]}>
-            <Select placeholder="Sistem yetkisini seçin">
+            <Select placeholder="Sistem yetkisini seçin" size="large" style={{ borderRadius: 8 }}>
               <Select.Option value="Admin">Admin (Tam Yetki)</Select.Option>
-              <Select.Option value="Depo Sorumlusu">Depo Sorumlusu (Ürün ve Stok İşlemleri)</Select.Option>
+              <Select.Option value="Depo Sorumlusu">Depo Sorumlusu (Sınırlı Yetki)</Select.Option>
               <Select.Option value="İzleyici">İzleyici (Sadece Okuma)</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item label={seciliKullanici ? "Yeni Şifre (Değiştirmeyecekseniz boş bırakın)" : "Şifre"} name="sifre" rules={[{ required: !seciliKullanici, message: 'Şifre zorunlu!' }]}>
-            <Input.Password placeholder="Güvenli şifre giriniz" />
+          <Form.Item label={seciliKullanici ? "Yeni Şifre (Boş bırakılabilir)" : "Şifre"} name="sifre" rules={[{ required: !seciliKullanici, message: 'Şifre zorunlu!' }]}>
+            <Input.Password placeholder="Güvenli şifre giriniz" size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
         </Form>
       </Modal>
-    </>
+
+      <style>{`
+        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
+        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+      `}</style>
+    </div>
   );
 };
 

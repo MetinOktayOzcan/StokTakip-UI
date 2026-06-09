@@ -1,39 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, message, DatePicker, Space, Tag, Grid, List, Card } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, message, DatePicker, Space, Grid, Card, List } from 'antd';
 import { SearchOutlined, PlusOutlined, CalendarOutlined, EnvironmentOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import { jwtDecode } from 'jwt-decode';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
 
 const StokHareketleri = () => {
-  const [urunler, setUrunler] = useState([]);
-  const [filtrelenmisUrunler, setFiltrelenmisUrunler] = useState([]);
+  const [hareketler, setHareketler] = useState([]);
+  const [filtrelenmisHareketler, setFiltrelenmisHareketler] = useState([]);
   const [urunListesi, setUrunListesi] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [modalAcik, setModalAcik] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
   const [tarihAraligi, setTarihAraligi] = useState(null);
   const [islemFiltresi, setIslemFiltresi] = useState(null);
+  const [kullaniciRolu, setKullaniciRolu] = useState('');
   
   const [form] = Form.useForm();
-  
   const screens = useBreakpoint();
   const isMobile = screens.xs; 
 
-  const verileriCek = async () => {
+  const rolCek = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
+        setKullaniciRolu(rol.toLowerCase());
+      } catch (error) {}
+    }
+  };
+
+  const fetchHareketler = async () => {
     try {
       const response = await axios.get('/api/stokhareketleri');
-      setUrunler(response.data);
-      setFiltrelenmisUrunler(response.data);
+      setHareketler(response.data);
+      setFiltrelenmisHareketler(response.data);
       setYukleniyor(false);
     } catch (error) {
       setYukleniyor(false);
     }
   };
 
-  const urunleriCek = async () => {
+  const fetchUrunler = async () => {
     try {
       const response = await axios.get('/api/urunler');
       setUrunListesi(response.data);
@@ -41,26 +53,26 @@ const StokHareketleri = () => {
     }
   };
 
-  const islemKaydet = async (degerler) => {
+  const handleSave = async (degerler) => {
     try {
       await axios.post('/api/stokhareketleri', degerler);
       setModalAcik(false);
       form.resetFields();
-      verileriCek();
+      fetchHareketler();
       message.success("İşlem başarıyla kaydedildi.");
     } catch (error) {
-      const hataDetayi = error.response?.data?.mesaj || error.response?.data?.message || "Beklenmedik hata oluştu";
-      message.error(hataDetayi);
+      message.error(error.response?.data?.mesaj || "Beklenmedik hata oluştu");
     }
   };
 
   useEffect(() => {
-    verileriCek();
-    urunleriCek();
+    rolCek();
+    fetchHareketler();
+    fetchUrunler();
   }, []);
 
   useEffect(() => {
-    let sonuc = urunler;
+    let sonuc = hareketler;
 
     if (aramaMetni) {
       sonuc = sonuc.filter(u => 
@@ -84,11 +96,11 @@ const StokHareketleri = () => {
       });
     }
 
-    setFiltrelenmisUrunler(sonuc);
-  }, [aramaMetni, tarihAraligi, islemFiltresi, urunler]);
+    setFiltrelenmisHareketler(sonuc);
+  }, [aramaMetni, tarihAraligi, islemFiltresi, hareketler]);
 
-  const excelIndir = () => {
-    const formatliVeri = filtrelenmisUrunler.map(h => ({
+  const handleExport = () => {
+    const formatliVeri = filtrelenmisHareketler.map(h => ({
       'Tarih': new Date(h.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
       'Ürün Adı': h.urunAdi,
       'İşlem Türü': h.islemTuru,
@@ -103,102 +115,93 @@ const StokHareketleri = () => {
     XLSX.writeFile(workbook, "Stok_Hareketleri.xlsx");
   };
 
+  const getTagStyle = (islemTuru) => {
+    const kucuk = islemTuru?.toLowerCase() || '';
+    if (kucuk.includes('giriş') || kucuk.includes('giris')) return { color: '#059669', bg: '#D1FAE5' };
+    if (kucuk.includes('çıkış') || kucuk.includes('cikis')) return { color: '#E11D48', bg: '#FEE2E2' };
+    return { color: '#475569', bg: '#F1F5F9' };
+  };
+
   const tabloSutunlari = [
     { 
-      title: 'Ürün Adı', 
+      title: 'Ürün', 
       dataIndex: 'urunAdi', 
       key: 'urunAdi',
       width: '30%',
-      render: (text) => <span style={{ fontWeight: 500, fontSize: '14px' }}>{text}</span>
+      render: (text) => <span style={{ fontWeight: 600, color: '#18181B' }}>{text}</span>
     },
     { 
       title: 'İşlem Detayları', 
       key: 'islemDetayi',
       width: '35%',
       render: (_, record) => {
-        const kucukHarf = record.islemTuru?.toLowerCase() || '';
-        const isGiris = kucukHarf.includes('giriş') || kucukHarf.includes('giris');
-        const renk = isGiris ? 'green' : 'red';
-        const tarihFormatli = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-        const konumMetni = record.konum ? record.konum : 'Belirtilmedi';
-
+        const tag = getTagStyle(record.islemTuru);
+        const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
+        
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Tag color={renk} bordered={false} style={{ margin: 0, fontWeight: 500, borderRadius: '4px', padding: '0 8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 11 }}>
                 {record.islemTuru?.toUpperCase()}
-              </Tag>
-              <span style={{ fontWeight: 500, fontSize: '14px' }}>
-                {record.miktar} Adet
               </span>
+              <span style={{ fontWeight: 600, fontSize: 14, color: '#18181B' }}>{record.miktar} Adet</span>
             </div>
-            <div style={{ color: '#8c98a4', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ display: 'flex', alignItems: 'center' }}>
-                <CalendarOutlined style={{ marginRight: 6, opacity: 0.8 }} />
-                {tarihFormatli}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center' }}>
-                <EnvironmentOutlined style={{ marginRight: 6, opacity: 0.8 }} />
-                {konumMetni}
-              </span>
+            <div style={{ color: '#71717A', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CalendarOutlined />{islemZamani}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><EnvironmentOutlined />{record.konum || 'Belirtilmedi'}</span>
             </div>
           </div>
         );
       }
     },
     { 
-      title: 'Açıklama', 
+      title: 'Notlar', 
       dataIndex: 'aciklama', 
       key: 'aciklama',
       width: '35%',
-      render: (text) => (
-        <div style={{ wordWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'normal', color: '#8c98a4', fontSize: '13px' }}>
-          {text ? text : '-'}
-        </div>
-      )
+      render: (text) => <span style={{ color: '#71717A', fontSize: 13 }}>{text || '-'}</span>
     }
   ];
 
   const mobilListeRender = (record) => {
-    const kucukHarf = record.islemTuru?.toLowerCase() || '';
-    const isGiris = kucukHarf.includes('giriş') || kucukHarf.includes('giris');
-    const renk = isGiris ? 'green' : 'red';
-    const tarihFormatli = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-    const konumMetni = record.konum ? record.konum : 'Belirtilmedi';
+    const tag = getTagStyle(record.islemTuru);
+    const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
 
     return (
       <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
         <Card 
-          size="small" 
-          style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', background: 'var(--ant-color-bg-container)' }}
-          bodyStyle={{ padding: '16px' }}
+          style={{ width: '100%', borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
+          bodyStyle={{ padding: 16 }}
         >
-          <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: 12 }}>{record.urunAdi}</div>
+          <div style={{ fontWeight: 600, fontSize: 15, color: '#18181B', marginBottom: 12 }}>
+            {record.urunAdi}
+          </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Tag color={renk} bordered={false} style={{ margin: 0, fontWeight: 500, borderRadius: '4px', padding: '2px 8px' }}>
+            <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
               {record.islemTuru?.toUpperCase()}
-            </Tag>
-            <span style={{ fontWeight: 600, fontSize: '14px', color: isGiris ? '#36b37e' : '#ff5630' }}>
+            </span>
+            <span style={{ fontWeight: 600, fontSize: 14, color: '#18181B' }}>
               {record.miktar} Adet
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#8c98a4', fontSize: '13px' }}>
-            <span style={{ display: 'flex', alignItems: 'center' }}>
-              <CalendarOutlined style={{ marginRight: 8, fontSize: '14px' }} />
-              {tarihFormatli}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: '#71717A', fontSize: 13 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center' }}>
-              <EnvironmentOutlined style={{ marginRight: 8, fontSize: '14px' }} />
-              {konumMetni}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <EnvironmentOutlined style={{ fontSize: 14 }} /> {record.konum || 'Belirtilmedi'}
             </span>
           </div>
 
           {record.aciklama && (
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ant-color-border-secondary)', color: '#8c98a4', fontSize: '13px', lineHeight: '1.5' }}>
-              {record.aciklama}
-            </div>
+            <>
+              <div style={{ borderTop: '1px solid #E4E4E7', margin: '16px 0' }} />
+              <div style={{ color: '#71717A', fontSize: 13 }}>
+                {record.aciklama}
+              </div>
+            </>
           )}
         </Card>
       </List.Item>
@@ -206,25 +209,30 @@ const StokHareketleri = () => {
   };
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
-        <h2 style={{ margin: 0 }}>Stok Hareketleri</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#18181B' }}>İşlemler</h2>
+          <span style={{ color: '#71717A', fontSize: 14 }}>Stok hareketlerini kaydetme ve takip etme</span>
+        </div>
         <Space>
-          <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e' }}>
+          <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, borderColor: '#E4E4E7', color: '#3F3F46', fontWeight: 500, height: 40 }}>
             Excel İndir
           </Button>
-          <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => setModalAcik(true)}>
-            Yeni İşlem Ekle
-          </Button>
+          {kullaniciRolu !== 'izleyici' && kullaniciRolu !== 'i̇zleyici' && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalAcik(true)} style={{ borderRadius: 8, background: '#2563EB', fontWeight: 500, height: 40 }}>
+              Yeni İşlem
+            </Button>
+          )}
         </Space>
       </div>
 
-      <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '16px', flexWrap: 'wrap' }}>
+      <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 16 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, flexWrap: 'wrap' }}>
           <Input 
-            placeholder="Ürün, Konum veya Açıklama ara..." 
-            prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
-            style={{ width: isMobile ? '100%' : 260 }}
+            placeholder="Öğeleri veya konumları ara..." 
+            prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+            style={{ width: isMobile ? '100%' : 260, borderRadius: 8 }}
             allowClear
             onChange={(e) => setAramaMetni(e.target.value)}
           />
@@ -234,81 +242,66 @@ const StokHareketleri = () => {
             allowClear
             onChange={(value) => setIslemFiltresi(value)}
             options={[
-              { value: 'Giriş', label: 'Sadece Girişler' },
-              { value: 'Çıkış', label: 'Sadece Çıkışlar' }
+              { value: 'Giriş', label: 'Giriş' },
+              { value: 'Çıkış', label: 'Çıkış' }
             ]}
           />
           <RangePicker 
-            placeholder={['Başlangıç', 'Bitiş']}
-            style={{ width: isMobile ? '100%' : 280, flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250 }}
+            style={{ width: isMobile ? '100%' : 280, flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250, borderRadius: 8 }}
             onChange={(dates) => setTarihAraligi(dates)}
           />
         </div>
-      </div>
+      </Card>
 
       {isMobile ? (
         <List
-          dataSource={filtrelenmisUrunler}
+          dataSource={filtrelenmisHareketler}
           renderItem={mobilListeRender}
           loading={yukleniyor}
           rowKey="hareketID"
           pagination={{ position: 'bottom', align: 'center', pageSize: 10 }}
         />
       ) : (
-        <Table 
-          dataSource={filtrelenmisUrunler} 
-          columns={tabloSutunlari} 
-          rowKey="hareketID" 
-          loading={yukleniyor} 
-          scroll={{ x: 'max-content' }}
-        />
+        <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 0 }}>
+          <Table 
+            dataSource={filtrelenmisHareketler} 
+            columns={tabloSutunlari} 
+            rowKey="hareketID" 
+            loading={yukleniyor} 
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            rowClassName={() => 'custom-row-hover'}
+            style={{ background: 'transparent' }}
+          />
+        </Card>
       )}
 
-      <Modal 
-        title="Yeni Stok Hareketi" 
-        open={modalAcik} 
-        onOk={() => form.submit()} 
-        onCancel={() => { setModalAcik(false); form.resetFields(); }}
-        okText="Kaydet"
-        cancelText="İptal"
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={islemKaydet}>
-          
+      <Modal title="Yeni Stok Hareketi" open={modalAcik} onOk={() => form.submit()} onCancel={() => { setModalAcik(false); form.resetFields(); }} okText="Kaydet" cancelText="İptal" destroyOnHidden>
+        <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item label="Ürün Seç" name="urunID" rules={[{ required: true, message: 'Ürün seçimi zorunlu!' }]}>
-            <Select
-              showSearch
-              placeholder="Ürün ara veya seç..."
-              optionFilterProp="label"
-              options={urunListesi.map((urun) => ({
-                value: urun.urunID || urun.urunId,
-                label: urun.urunAdi,
-              }))}
-            />
+            <Select showSearch placeholder="Ürün ara veya seç..." optionFilterProp="label" size="large" options={urunListesi.map((urun) => ({ value: urun.urunID || urun.urunId, label: urun.urunAdi }))} />
           </Form.Item>
-          
           <Form.Item label="İşlem Türü" name="islemTuru" rules={[{ required: true, message: 'İşlem türü seçin!' }]}>
-            <Select placeholder="Seçiniz...">
-              <Select.Option value="Giriş">Giriş</Select.Option>
-              <Select.Option value="Çıkış">Çıkış</Select.Option>
-            </Select>
+            <Select placeholder="Seçiniz..." size="large"><Select.Option value="Giriş">Giriş</Select.Option><Select.Option value="Çıkış">Çıkış</Select.Option></Select>
           </Form.Item>
-          
           <Form.Item label="Miktar" name="miktar" rules={[{ required: true, message: 'Miktar girin!' }]}>
-            <InputNumber style={{ width: '100%' }} min={1} />
+            <InputNumber style={{ width: '100%' }} min={1} size="large" />
           </Form.Item>
-
           <Form.Item label="Konum / Depo" name="konum" rules={[{ required: true, message: 'Konum belirtmek zorunlu!' }]}>
-            <Input placeholder="Örn: Merkez Depo - Raf A5" />
+            <Input placeholder="Örn: Merkez Depo - Raf A5" size="large" />
           </Form.Item>
-
           <Form.Item label="Açıklama" name="aciklama">
             <Input.TextArea rows={3} placeholder="İşlem detaylarını girin..." />
           </Form.Item>
-
         </Form>
       </Modal>
-    </>
+
+      <style>{`
+        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
+        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+      `}</style>
+    </div>
   );
 };
 
