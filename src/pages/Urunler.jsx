@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Space, message, Popconfirm, Select, Grid, List, Card, Tag } from 'antd';
-import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const { useBreakpoint } = Grid;
 
@@ -15,7 +16,6 @@ const Urunler = () => {
   const [seciliUrun, setSeciliUrun] = useState(null);
   const [form] = Form.useForm();
 
-  // mobile cihaz algılama
   const screens = useBreakpoint();
   const isMobile = screens.xs; 
 
@@ -40,7 +40,6 @@ const Urunler = () => {
         message.warning("Sistemde kayıtlı kategori bulunamadı.");
       }
     } catch (error) {
-      console.error("Kategori API Hatası: Backend'de /api/kategoriler ucu var mı?", error);
       message.error("Kategoriler sunucudan çekilemedi! Backend'i kontrol edin.");
     }
   };
@@ -54,7 +53,8 @@ const Urunler = () => {
     if (aramaMetni) {
       const sonuc = urunler.filter(u => 
         u.urunAdi?.toLowerCase().includes(aramaMetni.toLowerCase()) || 
-        u.kategoriAdi?.toLowerCase().includes(aramaMetni.toLowerCase())
+        u.kategoriAdi?.toLowerCase().includes(aramaMetni.toLowerCase()) ||
+        u.konum?.toLowerCase().includes(aramaMetni.toLowerCase())
       );
       setFiltrelenmisUrunler(sonuc);
     } else {
@@ -71,7 +71,8 @@ const Urunler = () => {
         urunAdi: degerler.urunAdi,
         birimFiyat: degerler.birimFiyat,
         stokMiktari: degerler.stokMiktari,
-        kategoriID: degerler.kategoriID
+        kategoriID: degerler.kategoriID,
+        konum: degerler.konum
       };
 
       if (seciliUrun) {
@@ -86,7 +87,6 @@ const Urunler = () => {
       setSeciliUrun(null);
       verileriCek();
     } catch (error) {
-      console.error("Kayıt Hatası Detayı:", error.response?.data);
       const hataDetayi = error.response?.data?.mesaj || error.response?.data?.message || "Kategori ID'si veya veriler hatalı olabilir.";
       message.error(`Kayıt Başarısız: ${hataDetayi}`);
     }
@@ -99,7 +99,6 @@ const Urunler = () => {
       message.success("Ürün başarıyla silindi.");
       verileriCek();
     } catch (error) {
-      console.error("Silme Hatası Detayı:", error.response?.data);
       message.error("Silme işlemi başarısız! Bu ürüne ait stok hareketi geçmişi olabilir.");
     }
   };
@@ -118,7 +117,8 @@ const Urunler = () => {
         urunAdi: urun.urunAdi,
         birimFiyat: urun.birimFiyat,
         stokMiktari: urun.stokMiktari,
-        kategoriID: gecerliKategoriID 
+        kategoriID: gecerliKategoriID,
+        konum: urun.konum
       });
     } else {
       form.resetFields();
@@ -126,9 +126,25 @@ const Urunler = () => {
     setModalAcik(true);
   };
 
+  const excelIndir = () => {
+    const formatliVeri = filtrelenmisUrunler.map(u => ({
+      'Ürün Adı': u.urunAdi,
+      'Kategori': u.kategoriAdi || 'Kategori Yok',
+      'Konum': u.konum || '-',
+      'Fiyat (TL)': u.birimFiyat,
+      'Stok Miktarı': u.stokMiktari
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ürünler");
+    XLSX.writeFile(workbook, "Urun_Listesi.xlsx");
+  };
+
   const tabloSutunlari = [
     { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi', render: (text) => <span style={{ fontWeight: 500 }}>{text}</span> },
     { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi', render: (text) => <Tag color="blue" bordered={false}>{text || 'Kategori Yok'}</Tag> },
+    { title: 'Konum', dataIndex: 'konum', key: 'konum', render: (text) => <span style={{ color: '#8c98a4' }}>{text || '-'}</span> },
     { title: 'Fiyat', dataIndex: 'birimFiyat', key: 'birimFiyat', render: (text) => <span style={{ fontWeight: 500, color: '#36b37e' }}>{text} TL</span> },
     { title: 'Stok', dataIndex: 'stokMiktari', key: 'stokMiktari', render: (text) => <span style={{ fontWeight: 500 }}>{text} Adet</span> },
     {
@@ -157,7 +173,6 @@ const Urunler = () => {
     }
   ];
 
-  // --- mobil uyumlu tasarım entegrasyonu
   const mobilListeRender = (record) => (
     <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
       <Card 
@@ -170,6 +185,11 @@ const Urunler = () => {
           <Tag color="blue" bordered={false} style={{ margin: 0, whiteSpace: 'nowrap' }}>
             {record.kategoriAdi || 'Kategori Yok'}
           </Tag>
+        </div>
+        
+        <div style={{ color: '#8c98a4', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+          <EnvironmentOutlined />
+          {record.konum || 'Konum Belirtilmedi'}
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -208,14 +228,19 @@ const Urunler = () => {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0 }}>Ürün Listesi</h2>
-        <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => modalAc()}>
-          Yeni Ürün Ekle
-        </Button>
+        <Space>
+          <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e' }}>
+            Excel İndir
+          </Button>
+          <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => modalAc()}>
+            Yeni Ürün Ekle
+          </Button>
+        </Space>
       </div>
 
       <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
         <Input 
-          placeholder="Ürün adı veya kategori ara..." 
+          placeholder="Ürün adı, kategori veya konum ara..." 
           prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
           style={{ width: isMobile ? '100%' : 400 }}
           allowClear
@@ -265,6 +290,10 @@ const Urunler = () => {
                 label: kat.kategoriAdi,
               }))}
             />
+          </Form.Item>
+
+          <Form.Item label="Konum / Raf" name="konum">
+            <Input placeholder="Örn: Merkez Depo - Raf A5" />
           </Form.Item>
           
           <Form.Item label="Birim Fiyat (TL)" name="birimFiyat" rules={[{ required: true, message: 'Fiyat zorunlu!' }]}>

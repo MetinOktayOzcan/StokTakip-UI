@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, message, DatePicker, Space, Tag, Grid, List, Card } from 'antd';
-import { SearchOutlined, PlusOutlined, CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, CalendarOutlined, EnvironmentOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
@@ -18,7 +19,6 @@ const StokHareketleri = () => {
   
   const [form] = Form.useForm();
   
-  // mobile cihaz algılama
   const screens = useBreakpoint();
   const isMobile = screens.xs; 
 
@@ -29,7 +29,6 @@ const StokHareketleri = () => {
       setFiltrelenmisUrunler(response.data);
       setYukleniyor(false);
     } catch (error) {
-      console.log(error);
       setYukleniyor(false);
     }
   };
@@ -39,7 +38,6 @@ const StokHareketleri = () => {
       const response = await axios.get('/api/urunler');
       setUrunListesi(response.data);
     } catch (error) {
-      console.log(error);
     }
   };
 
@@ -88,6 +86,22 @@ const StokHareketleri = () => {
 
     setFiltrelenmisUrunler(sonuc);
   }, [aramaMetni, tarihAraligi, islemFiltresi, urunler]);
+
+  const excelIndir = () => {
+    const formatliVeri = filtrelenmisUrunler.map(h => ({
+      'Tarih': new Date(h.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
+      'Ürün Adı': h.urunAdi,
+      'İşlem Türü': h.islemTuru,
+      'Miktar': h.miktar,
+      'Konum': h.konum || 'Belirtilmedi',
+      'Açıklama': h.aciklama || '-'
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Stok_Hareketleri");
+    XLSX.writeFile(workbook, "Stok_Hareketleri.xlsx");
+  };
 
   const tabloSutunlari = [
     { 
@@ -145,7 +159,6 @@ const StokHareketleri = () => {
     }
   ];
 
-  // --- mobil uyumlu tasarım entegrasyonu
   const mobilListeRender = (record) => {
     const kucukHarf = record.islemTuru?.toLowerCase() || '';
     const isGiris = kucukHarf.includes('giriş') || kucukHarf.includes('giris');
@@ -196,12 +209,16 @@ const StokHareketleri = () => {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0 }}>Stok Hareketleri</h2>
-        <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => setModalAcik(true)}>
-          Yeni İşlem Ekle
-        </Button>
+        <Space>
+          <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e' }}>
+            Excel İndir
+          </Button>
+          <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => setModalAcik(true)}>
+            Yeni İşlem Ekle
+          </Button>
+        </Space>
       </div>
 
-      {/* Dinamik Filtreleme Çubuğu (Mobilde Alt Alta, Masaüstünde Yan Yana) */}
       <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '16px', flexWrap: 'wrap' }}>
           <Input 
@@ -229,7 +246,6 @@ const StokHareketleri = () => {
         </div>
       </div>
 
-      {/* Ekran Boyutuna Göre Tablo veya Kart Gösterimi */}
       {isMobile ? (
         <List
           dataSource={filtrelenmisUrunler}

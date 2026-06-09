@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Select, DatePicker, Tag, Grid, List, Card } from 'antd';
-import { SearchOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons';
+import { Table, Input, Select, DatePicker, Tag, Grid, List, Card, Button } from 'antd';
+import { SearchOutlined, ClockCircleOutlined, UserOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
@@ -67,6 +68,20 @@ const IslemGecmisi = () => {
     if (kucukTip.includes('sil') || kucukTip.includes('çıkış')) return 'red';
     if (kucukTip.includes('güncelle')) return 'orange';
     return 'blue';
+  };
+
+  const excelIndir = () => {
+    const formatliVeri = filtrelenmisLoglar.map(l => ({
+      'Tarih': new Date(l.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
+      'İşlem Tipi': l.islemTipi,
+      'Kullanıcı': l.kullanici,
+      'Detay': l.detay
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sistem_Loglari");
+    XLSX.writeFile(workbook, "Sistem_Loglari.xlsx");
   };
 
   const tabloSutunlari = [
@@ -141,8 +156,11 @@ const IslemGecmisi = () => {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0 }}>Sistem Logları</h2>
+        <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e' }}>
+          Excel İndir
+        </Button>
       </div>
 
       <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
