@@ -10,7 +10,10 @@ import {
   UserOutlined,
   LogoutOutlined,
   MoonOutlined,
-  SunOutlined
+  SunOutlined,
+  HistoryOutlined,
+  TeamOutlined,
+  TagsOutlined
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import Urunler from './pages/Urunler';
@@ -18,7 +21,8 @@ import StokHareketleri from './pages/StokHareketleri';
 import Login from './pages/login';
 import { jwtDecode } from 'jwt-decode';
 import IslemGecmisi from './pages/IslemGecmisi';
-import { HistoryOutlined } from '@ant-design/icons';
+import Kullanicilar from './pages/Kullanicilar';
+import Kategoriler from './pages/Kategoriler';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -58,7 +62,6 @@ const App = () => {
 
         setKullaniciBilgileri({ adSoyad: formatliIsim, rol, basHarfler });
       } catch (error) {
-        console.error(error);
       }
     }
   }, [location.pathname]);
@@ -85,17 +88,29 @@ const App = () => {
   const profilMenusu = {
     items: [
       {
-        key: '1',
-        icon: <UserOutlined />,
-        label: 'Profilim',
-      },
-      {
         key: '2',
         icon: <LogoutOutlined style={{ color: '#ff5630' }} />,
         label: <span style={{ color: '#ff5630' }}>Çıkış Yap</span>,
         onClick: cikisYap
       },
     ],
+  };
+
+  const menuElemanlariGetir = () => {
+    const rol = kullaniciBilgileri.rol;
+    const items = [
+      { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
+      { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
+      { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' }
+    ];
+
+    if (rol === 'Admin') {
+      items.push({ key: '/kategoriler', icon: <TagsOutlined />, label: 'Kategori Yönetimi' });
+      items.push({ key: '/islem-gecmisi', icon: <HistoryOutlined />, label: 'Sistem Logları' });
+      items.push({ key: '/kullanicilar', icon: <TeamOutlined />, label: 'Kullanıcı Yönetimi' });
+    }
+
+    return items;
   };
 
   if (location.pathname === '/login') {
@@ -170,9 +185,7 @@ const App = () => {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            
             <div style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, flexShrink: 0 }} />
-            
             <div className="menu-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
               <Menu 
                 theme="dark" 
@@ -180,12 +193,7 @@ const App = () => {
                 mode="inline" 
                 onClick={(e) => navigate(e.key)}
                 style={{ background: 'transparent', borderRight: 0 }} 
-                items={[
-                  { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
-                  { key: '/urunler', icon: <AppstoreOutlined />, label: 'Ürün Yönetimi' },
-                  { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' },
-                  { key: '/islem-gecmisi', icon: <HistoryOutlined />, label: 'Sistem Logları' },
-                ]} 
+                items={menuElemanlariGetir()} 
               />
             </div>
 
@@ -295,7 +303,6 @@ const App = () => {
                 onClick={() => setKaranlikMod(!karanlikMod)} 
                 style={{ fontSize: '20px' }}
               />
-              
               <Dropdown menu={profilMenusu} placement="bottomRight">
                 <Avatar style={{ backgroundColor: '#1890ff', cursor: 'pointer' }} icon={<UserOutlined />} />
               </Dropdown>
@@ -308,10 +315,18 @@ const App = () => {
               <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               <Route path="/urunler" element={<PrivateRoute><Urunler /></PrivateRoute>} />
               <Route path="/stok-hareketleri" element={<PrivateRoute><StokHareketleri /></PrivateRoute>} />
-              <Route path="/islem-gecmisi" element={<PrivateRoute><IslemGecmisi /></PrivateRoute>} />
+              
+              {kullaniciBilgileri.rol === 'Admin' && (
+                <>
+                  <Route path="/kategoriler" element={<PrivateRoute><Kategoriler /></PrivateRoute>} />
+                  <Route path="/islem-gecmisi" element={<PrivateRoute><IslemGecmisi /></PrivateRoute>} />
+                  <Route path="/kullanicilar" element={<PrivateRoute><Kullanicilar /></PrivateRoute>} />
+                </>
+              )}
+
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Content>
-
         </Layout>
       </Layout>
     </ConfigProvider>
