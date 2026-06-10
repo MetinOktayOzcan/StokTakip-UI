@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, message, Popconfirm, Grid, Card, List } from 'antd';
+import { Table, Button, Drawer, Form, Input, Select, Space, message, Popconfirm, Grid, Card, List, Tag } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, UserAddOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -9,7 +9,7 @@ const Kullanicilar = () => {
   const [kullanicilar, setKullanicilar] = useState([]);
   const [filtrelenmisKullanicilar, setFiltrelenmisKullanicilar] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
-  const [modalAcik, setModalAcik] = useState(false);
+  const [drawerAcik, setDrawerAcik] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
   const [seciliKullanici, setSeciliKullanici] = useState(null);
   const [form] = Form.useForm();
@@ -64,9 +64,7 @@ const Kullanicilar = () => {
         await axios.post('/api/kullanicilar', payload);
         message.success("Yeni kullanıcı eklendi.");
       }
-      setModalAcik(false);
-      form.resetFields();
-      setSeciliKullanici(null);
+      formKapat();
       fetchKullanicilar();
     } catch (error) {
       message.error(error.response?.data?.mesaj || "Kayıt işlemi başarısız.");
@@ -84,7 +82,7 @@ const Kullanicilar = () => {
     }
   };
 
-  const openModal = (kullanici = null) => {
+  const openDrawer = (kullanici = null) => {
     setSeciliKullanici(kullanici);
     if (kullanici) {
       form.setFieldsValue({
@@ -96,14 +94,20 @@ const Kullanicilar = () => {
     } else {
       form.resetFields();
     }
-    setModalAcik(true);
+    setDrawerAcik(true);
+  };
+
+  const formKapat = () => {
+    setDrawerAcik(false);
+    setSeciliKullanici(null);
+    form.resetFields();
   };
 
   const getRoleBadge = (rol) => {
     const kucukRol = rol?.toLowerCase() || '';
-    if (kucukRol === 'admin') return <span style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>ADMIN</span>;
-    if (kucukRol === 'depo sorumlusu') return <span style={{ backgroundColor: '#F8FAFC', color: '#475569', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>DEPO SORUMLUSU</span>;
-    return <span style={{ backgroundColor: '#F4F4F5', color: '#71717A', padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>İZLEYİCİ</span>;
+    if (kucukRol === 'admin') return <Tag color="blue" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>ADMIN</Tag>;
+    if (kucukRol === 'depo sorumlusu') return <Tag color="orange" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>DEPO SORUMLUSU</Tag>;
+    return <Tag color="default" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>İZLEYİCİ</Tag>;
   };
 
   const tabloSutunlari = [
@@ -111,13 +115,13 @@ const Kullanicilar = () => {
       title: 'İsim Soyisim', 
       dataIndex: 'adSoyad', 
       key: 'adSoyad', 
-      render: (text) => <span style={{ fontWeight: 600, color: '#18181B' }}>{text || '-'}</span> 
+      render: (text) => <span style={{ fontWeight: 600, color: 'var(--ant-color-text)' }}>{text || '-'}</span> 
     },
     { 
       title: 'Kullanıcı Adı', 
       dataIndex: 'kullaniciAdi', 
       key: 'kullaniciAdi', 
-      render: (text) => <span style={{ color: '#71717A', fontWeight: 500 }}>@{text}</span> 
+      render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)', fontWeight: 500 }}>@{text}</span> 
     },
     { 
       title: 'Rol', 
@@ -132,7 +136,7 @@ const Kullanicilar = () => {
       align: 'right',
       render: (_, record) => (
         <Space size="middle">
-          <Button type="text" icon={<EditOutlined style={{ color: '#71717A' }} />} onClick={() => openModal(record)} />
+          <Button type="text" icon={<EditOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />} onClick={() => openDrawer(record)} />
           <Popconfirm title="Emin misiniz?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır" placement="left">
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -144,21 +148,21 @@ const Kullanicilar = () => {
   const mobilListeRender = (record) => (
     <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
       <Card 
-        style={{ width: '100%', borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }}
+        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
         bodyStyle={{ padding: 16 }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <span style={{ fontWeight: 600, color: '#18181B', fontSize: 15 }}>{record.adSoyad || record.kullaniciAdi}</span>
+          <span style={{ fontWeight: 600, color: 'var(--ant-color-text)', fontSize: 15 }}>{record.adSoyad || record.kullaniciAdi}</span>
           {getRoleBadge(record.rol)}
         </div>
 
-        <div style={{ color: '#71717A', fontSize: 13, marginBottom: 12 }}>
+        <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
           @{record.kullaniciAdi}
         </div>
         
-        <div style={{ borderTop: '1px solid #E4E4E7', margin: '0 0 12px 0' }} />
+        <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '0 0 12px 0' }} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openDrawer(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
           <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
             <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
           </Popconfirm>
@@ -170,18 +174,18 @@ const Kullanicilar = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#18181B' }}>Kullanıcı Yönetimi</h2>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--ant-color-text)' }}>Kullanıcı Yönetimi</h2>
         <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
-          <Button type="primary" icon={<UserAddOutlined />} onClick={() => openModal()} style={{ flex: isMobile ? 1 : 'none', borderRadius: 20, background: '#2563EB', fontWeight: 500, height: 40 }}>
+          <Button type="primary" icon={<UserAddOutlined />} onClick={() => openDrawer()} style={{ flex: isMobile ? 1 : 'none', borderRadius: 8, background: '#2563EB', fontWeight: 500, height: 40 }}>
             Yeni Kullanıcı Ekle
           </Button>
         </div>
       </div>
 
-      <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
         <Input 
           placeholder="İsim, kullanıcı adı veya rol ara..." 
-          prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+          prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
           style={{ width: '100%', borderRadius: 8, height: 40 }}
           allowClear
           onChange={(e) => setAramaMetni(e.target.value)}
@@ -197,7 +201,7 @@ const Kullanicilar = () => {
           pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} 
         />
       ) : (
-        <Card style={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
           <Table 
             dataSource={filtrelenmisKullanicilar} 
             columns={tabloSutunlari} 
@@ -211,7 +215,21 @@ const Kullanicilar = () => {
         </Card>
       )}
 
-      <Modal title={seciliKullanici ? "Kullanıcıyı Düzenle" : "Yeni Kullanıcı Ekle"} open={modalAcik} onOk={() => form.submit()} onCancel={() => { setModalAcik(false); setSeciliKullanici(null); form.resetFields(); }} okText="Kaydet" cancelText="İptal" destroyOnHidden>
+      <Drawer
+        title={seciliKullanici ? "Kullanıcıyı Düzenle" : "Yeni Kullanıcı Ekle"}
+        width={isMobile ? '100%' : 400}
+        onClose={formKapat}
+        open={drawerAcik}
+        destroyOnClose
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <Button onClick={formKapat} style={{ borderRadius: 8 }}>İptal</Button>
+            <Button onClick={() => form.submit()} type="primary" style={{ background: 'var(--ant-color-text)', borderRadius: 8 }}>
+              {seciliKullanici ? "Değişiklikleri Kaydet" : "Kullanıcı Ekle"}
+            </Button>
+          </div>
+        }
+      >
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item label="Ad Soyad" name="adSoyad" rules={[{ required: true, message: 'Ad Soyad giriniz!' }]}>
             <Input placeholder="Örn: Yaver Polat" size="large" style={{ borderRadius: 8 }} />
@@ -230,12 +248,12 @@ const Kullanicilar = () => {
             <Input.Password placeholder="Güvenli şifre giriniz" size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
       <style>{`
-        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
-        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
-        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-layout); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid var(--ant-color-border-secondary); }
+        .custom-row-hover:hover > td { background: var(--ant-color-bg-text-hover) !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid var(--ant-color-border-secondary); }
       `}</style>
     </div>
   );

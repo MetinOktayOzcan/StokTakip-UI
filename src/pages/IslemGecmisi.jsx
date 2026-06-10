@@ -100,7 +100,7 @@ const IslemGecmisi = () => {
       dataIndex: 'detay',
       key: 'detay',
       width: '50%',
-      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>
+      render: (text) => <span style={{ color: 'var(--ant-color-text)', fontWeight: 500 }}>{text}</span>
     },
     {
       title: 'Kullanıcı',
@@ -108,7 +108,7 @@ const IslemGecmisi = () => {
       key: 'kullanici',
       width: '15%',
       render: (text) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, color: 'var(--ant-color-text)' }}>
           <div style={{ background: 'var(--ant-color-bg-layout)', padding: '4px', borderRadius: '50%', display: 'flex' }}>
             <UserOutlined style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }} />
           </div>
@@ -136,7 +136,7 @@ const IslemGecmisi = () => {
     return (
       <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
         <Card 
-          style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
+          style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
           bodyStyle={{ padding: 16 }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -149,11 +149,11 @@ const IslemGecmisi = () => {
             </span>
           </div>
           
-          <div style={{ fontSize: '14px', lineHeight: '1.5', marginBottom: 16, fontWeight: 500 }}>
+          <div style={{ color: 'var(--ant-color-text)', fontSize: '14px', lineHeight: '1.5', marginBottom: 16, fontWeight: 500 }}>
             {record.detay}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px', fontSize: '13px', fontWeight: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px', color: 'var(--ant-color-text)', fontSize: '13px', fontWeight: 500 }}>
             <div style={{ background: 'var(--ant-color-bg-layout)', padding: '4px', borderRadius: '50%', display: 'flex' }}>
               <UserOutlined style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }} />
             </div>
@@ -168,15 +168,15 @@ const IslemGecmisi = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Sistem Logları</h2>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--ant-color-text)' }}>Sistem Logları</h2>
           <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 14 }}>Sistemdeki tüm aktiviteleri ve kullanıcı işlemlerini izleyin</span>
         </div>
-        <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, height: 40, width: isMobile ? '100%' : 'auto' }}>
+        <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, borderColor: 'var(--ant-color-border-secondary)', color: 'var(--ant-color-text)', fontWeight: 500, height: 40, width: isMobile ? '100%' : 'auto' }}>
           Excel İndir
         </Button>
       </div>
 
-      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 16 }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>
           <Input 
             placeholder="Detay veya kullanıcı ara..." 
@@ -214,7 +214,7 @@ const IslemGecmisi = () => {
           pagination={{ position: 'bottom', align: 'center', pageSize: 15 }}
         />
       ) : (
-        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 0 }}>
           <Table 
             dataSource={filtrelenmisLoglar} 
             columns={tabloSutunlari} 
@@ -229,10 +229,10 @@ const IslemGecmisi = () => {
       )}
       
       <style>{`
-        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-container); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--ant-color-border-secondary); }
+        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-layout); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid var(--ant-color-border-secondary); }
         .custom-row-hover:hover > td { background: var(--ant-color-bg-text-hover) !important; }
         .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid var(--ant-color-border-secondary); }
-        .ant-picker { border-radius: 8px; }
+        .ant-picker { border-radius: 8px; border-color: var(--ant-color-border-secondary); }
       `}</style>
     </div>
   );

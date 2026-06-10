@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, message, DatePicker, Space, Grid, Card, List } from 'antd';
+import { Table, Button, Drawer, Form, Input, InputNumber, Select, message, DatePicker, Space, Grid, Card, List, Typography } from 'antd';
 import { SearchOutlined, PlusOutlined, CalendarOutlined, EnvironmentOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -7,13 +7,17 @@ import { jwtDecode } from 'jwt-decode';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
+const { Text } = Typography;
 
 const StokHareketleri = () => {
   const [hareketler, setHareketler] = useState([]);
   const [filtrelenmisHareketler, setFiltrelenmisHareketler] = useState([]);
   const [urunListesi, setUrunListesi] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
-  const [modalAcik, setModalAcik] = useState(false);
+  
+  const [drawerAcik, setDrawerAcik] = useState(false);
+  const [canliOnizleme, setCanliOnizleme] = useState({ seciliUrun: null, miktar: 0, islemTuru: null });
+
   const [aramaMetni, setAramaMetni] = useState('');
   const [tarihAraligi, setTarihAraligi] = useState(null);
   const [islemFiltresi, setIslemFiltresi] = useState(null);
@@ -30,8 +34,7 @@ const StokHareketleri = () => {
         const decoded = jwtDecode(token);
         const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
         setKullaniciRolu(rol.toLowerCase());
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   };
 
@@ -50,19 +53,18 @@ const StokHareketleri = () => {
     try {
       const response = await axios.get('/api/urunler');
       setUrunListesi(response.data);
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   const handleSave = async (degerler) => {
     try {
       await axios.post('/api/stokhareketleri', degerler);
-      setModalAcik(false);
-      form.resetFields();
+      formKapat();
       fetchHareketler();
+      fetchUrunler();
       message.success("İşlem başarıyla kaydedildi.");
     } catch (error) {
-      message.error("Beklenmedik hata oluştu.");
+      message.error(error.response?.data?.mesaj || "Beklenmedik hata oluştu");
     }
   };
 
@@ -74,7 +76,6 @@ const StokHareketleri = () => {
 
   useEffect(() => {
     let sonuc = hareketler;
-
     if (aramaMetni) {
       sonuc = sonuc.filter(u => 
         u.urunAdi?.toLowerCase().includes(aramaMetni.toLowerCase()) || 
@@ -82,23 +83,34 @@ const StokHareketleri = () => {
         u.aciklama?.toLowerCase().includes(aramaMetni.toLowerCase())
       );
     }
-
     if (islemFiltresi) {
       sonuc = sonuc.filter(u => u.islemTuru === islemFiltresi);
     }
-
     if (tarihAraligi && tarihAraligi[0] && tarihAraligi[1]) {
       const baslangicTarihi = new Date(tarihAraligi[0].format('YYYY-MM-DD')).getTime();
       const bitisTarihi = new Date(tarihAraligi[1].format('YYYY-MM-DD')).getTime() + 86399999; 
-      
       sonuc = sonuc.filter(u => {
         const islemZamani = new Date(u.islemTarihi).getTime();
         return islemZamani >= baslangicTarihi && islemZamani <= bitisTarihi;
       });
     }
-
     setFiltrelenmisHareketler(sonuc);
   }, [aramaMetni, tarihAraligi, islemFiltresi, hareketler]);
+
+  const handleValuesChange = (changedValues, allValues) => {
+    const urun = urunListesi.find(u => (u.urunID || u.urunId) === allValues.urunID);
+    setCanliOnizleme({
+      seciliUrun: urun || null,
+      miktar: allValues.miktar || 0,
+      islemTuru: allValues.islemTuru || null
+    });
+  };
+
+  const formKapat = () => {
+    setDrawerAcik(false);
+    form.resetFields();
+    setCanliOnizleme({ seciliUrun: null, miktar: 0, islemTuru: null });
+  };
 
   const handleExport = () => {
     const formatliVeri = filtrelenmisHareketler.map(h => ({
@@ -109,7 +121,6 @@ const StokHareketleri = () => {
       'Konum': h.konum || 'Belirtilmedi',
       'Açıklama': h.aciklama || '-'
     }));
-    
     const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Stok_Hareketleri");
@@ -124,13 +135,7 @@ const StokHareketleri = () => {
   };
 
   const tabloSutunlari = [
-    { 
-      title: 'Ürün', 
-      dataIndex: 'urunAdi', 
-      key: 'urunAdi',
-      width: '30%',
-      render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>
-    },
+    { title: 'Ürün', dataIndex: 'urunAdi', key: 'urunAdi', width: '30%', render: (text) => <span style={{ fontWeight: 600 }}>{text}</span> },
     { 
       title: 'İşlem Detayları', 
       key: 'islemDetayi',
@@ -138,13 +143,10 @@ const StokHareketleri = () => {
       render: (_, record) => {
         const tag = getTagStyle(record.islemTuru);
         const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-        
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 11 }}>
-                {record.islemTuru?.toUpperCase()}
-              </span>
+              <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 11 }}>{record.islemTuru?.toUpperCase()}</span>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{record.miktar} Adet</span>
             </div>
             <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -155,55 +157,24 @@ const StokHareketleri = () => {
         );
       }
     },
-    { 
-      title: 'Notlar', 
-      dataIndex: 'aciklama', 
-      key: 'aciklama',
-      width: '35%',
-      render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>{text || '-'}</span>
-    }
+    { title: 'Notlar', dataIndex: 'aciklama', key: 'aciklama', width: '35%', render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>{text || '-'}</span> }
   ];
 
   const mobilListeRender = (record) => {
     const tag = getTagStyle(record.islemTuru);
     const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-
     return (
       <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-        <Card 
-          style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
-          bodyStyle={{ padding: 16 }}
-        >
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>
-            {record.urunAdi}
-          </div>
-          
+        <Card style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{record.urunAdi}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
-              {record.islemTuru?.toUpperCase()}
-            </span>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>
-              {record.miktar} Adet
-            </span>
+            <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>{record.islemTuru?.toUpperCase()}</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{record.miktar} Adet</span>
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <EnvironmentOutlined style={{ fontSize: 14 }} /> {record.konum || 'Belirtilmedi'}
-            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><EnvironmentOutlined style={{ fontSize: 14 }} /> {record.konum || 'Belirtilmedi'}</span>
           </div>
-
-          {record.aciklama && (
-            <>
-              <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '16px 0' }} />
-              <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
-                {record.aciklama}
-              </div>
-            </>
-          )}
         </Card>
       </List.Item>
     );
@@ -217,11 +188,9 @@ const StokHareketleri = () => {
           <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 14 }}>Stok hareketlerini kaydetme ve takip etme</span>
         </div>
         <Space>
-          <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, height: 40 }}>
-            Excel İndir
-          </Button>
+          <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, height: 40 }}>Excel İndir</Button>
           {kullaniciRolu !== 'izleyici' && kullaniciRolu !== 'i̇zleyici' && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalAcik(true)} style={{ borderRadius: 8, height: 40 }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerAcik(true)} style={{ borderRadius: 8, height: 40, background: '#2563EB' }}>
               Yeni İşlem
             </Button>
           )}
@@ -230,72 +199,91 @@ const StokHareketleri = () => {
 
       <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, flexWrap: 'wrap' }}>
-          <Input 
-            placeholder="Öğeleri veya konumları ara..." 
-            prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
-            style={{ width: isMobile ? '100%' : 260, borderRadius: 8 }}
-            allowClear
-            onChange={(e) => setAramaMetni(e.target.value)}
-          />
-          <Select
-            placeholder="İşlem Türü"
-            style={{ width: isMobile ? '100%' : 150 }}
-            allowClear
-            onChange={(value) => setIslemFiltresi(value)}
-            options={[
-              { value: 'Giriş', label: 'Giriş' },
-              { value: 'Çıkış', label: 'Çıkış' }
-            ]}
-          />
-          <RangePicker 
-            style={{ width: isMobile ? '100%' : 280, flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250, borderRadius: 8 }}
-            onChange={(dates) => setTarihAraligi(dates)}
-          />
+          <Input placeholder="Öğeleri veya konumları ara..." prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />} style={{ width: isMobile ? '100%' : 260, borderRadius: 8 }} allowClear onChange={(e) => setAramaMetni(e.target.value)} />
+          <Select placeholder="İşlem Türü" style={{ width: isMobile ? '100%' : 150 }} allowClear onChange={(value) => setIslemFiltresi(value)} options={[{ value: 'Giriş', label: 'Giriş' }, { value: 'Çıkış', label: 'Çıkış' }]} />
+          <RangePicker style={{ width: isMobile ? '100%' : 280, flex: isMobile ? 'none' : 1, minWidth: isMobile ? 0 : 250, borderRadius: 8 }} onChange={(dates) => setTarihAraligi(dates)} />
         </div>
       </Card>
 
       {isMobile ? (
-        <List
-          dataSource={filtrelenmisHareketler}
-          renderItem={mobilListeRender}
-          loading={yukleniyor}
-          rowKey="hareketID"
-          pagination={{ position: 'bottom', align: 'center', pageSize: 10 }}
-        />
+        <List dataSource={filtrelenmisHareketler} renderItem={mobilListeRender} loading={yukleniyor} rowKey="hareketID" pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} />
       ) : (
         <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
-          <Table 
-            dataSource={filtrelenmisHareketler} 
-            columns={tabloSutunlari} 
-            rowKey="hareketID" 
-            loading={yukleniyor} 
-            scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
-            rowClassName={() => 'custom-row-hover'}
-            style={{ background: 'transparent' }}
-          />
+          <Table dataSource={filtrelenmisHareketler} columns={tabloSutunlari} rowKey="hareketID" loading={yukleniyor} scroll={{ x: 'max-content' }} pagination={{ pageSize: 10, position: ['bottomCenter'] }} rowClassName={() => 'custom-row-hover'} style={{ background: 'transparent' }} />
         </Card>
       )}
 
-      <Modal title="Yeni Stok Hareketi" open={modalAcik} onOk={() => form.submit()} onCancel={() => { setModalAcik(false); form.resetFields(); }} okText="Kaydet" cancelText="İptal" destroyOnHidden>
-        <Form form={form} layout="vertical" onFinish={handleSave}>
+      <Drawer
+        title="Yeni Stok Hareketi Oluştur"
+        width={isMobile ? '100%' : 500}
+        onClose={formKapat}
+        open={drawerAcik}
+        destroyOnClose
+        styles={{ body: { paddingBottom: 80 } }}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>İşlem Sonrası Stok</Text>
+              <Text strong style={{ fontSize: '18px' }}>
+                {canliOnizleme.seciliUrun ? (
+                  canliOnizleme.islemTuru === 'Giriş' 
+                    ? canliOnizleme.seciliUrun.stokMiktari + canliOnizleme.miktar
+                    : Math.max(0, canliOnizleme.seciliUrun.stokMiktari - canliOnizleme.miktar)
+                ) : '0'} Adet
+              </Text>
+            </div>
+            <Space>
+              <Button onClick={formKapat} style={{ borderRadius: 8 }}>İptal</Button>
+              <Button onClick={() => form.submit()} type="primary" style={{ background: '#18181B', borderRadius: 8, padding: '0 24px' }}>
+                İşlemi Onayla
+              </Button>
+            </Space>
+          </div>
+        }
+      >
+        <Form form={form} layout="vertical" onValuesChange={handleValuesChange} onFinish={handleSave}>
           <Form.Item label="Ürün Seç" name="urunID" rules={[{ required: true, message: 'Ürün seçimi zorunlu!' }]}>
-            <Select showSearch placeholder="Ürün ara veya seç..." optionFilterProp="label" size="large" options={urunListesi.map((urun) => ({ value: urun.urunID || urun.urunId, label: urun.urunAdi }))} />
+            <Select showSearch placeholder="Ürün ara veya seç..." optionFilterProp="label" size="large" style={{ borderRadius: 8 }} options={urunListesi.map((urun) => ({ value: urun.urunID || urun.urunId, label: urun.urunAdi }))} />
           </Form.Item>
-          <Form.Item label="İşlem Türü" name="islemTuru" rules={[{ required: true, message: 'İşlem türü seçin!' }]}>
-            <Select placeholder="Seçiniz..." size="large"><Select.Option value="Giriş">Giriş</Select.Option><Select.Option value="Çıkış">Çıkış</Select.Option></Select>
-          </Form.Item>
-          <Form.Item label="Miktar" name="miktar" rules={[{ required: true, message: 'Miktar girin!' }]}>
-            <InputNumber style={{ width: '100%' }} min={1} size="large" />
-          </Form.Item>
+          
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item label="İşlem Türü" name="islemTuru" style={{ flex: 1 }} rules={[{ required: true, message: 'İşlem türü seçin!' }]}>
+              <Select placeholder="Seçiniz..." size="large" style={{ borderRadius: 8 }}>
+                <Select.Option value="Giriş">Stok Girişi (+)</Select.Option>
+                <Select.Option value="Çıkış">Stok Çıkışı (-)</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item label="Miktar" name="miktar" style={{ flex: 1 }} rules={[{ required: true, message: 'Miktar girin!' }]}>
+              <InputNumber style={{ width: '100%', borderRadius: 8 }} min={1} size="large" />
+            </Form.Item>
+          </div>
+
           <Form.Item label="Konum / Depo" name="konum" rules={[{ required: true, message: 'Konum belirtmek zorunlu!' }]}>
-            <Input placeholder="Örn: Merkez Depo - Raf A5" size="large" />
+            <Input placeholder="Örn: Merkez Depo - Raf A5" size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
           <Form.Item label="Açıklama" name="aciklama">
-            <Input.TextArea rows={3} placeholder="İşlem detaylarını girin..." />
+            <Input.TextArea rows={3} placeholder="İşlem detaylarını girin (İsteğe bağlı)..." style={{ borderRadius: 8 }} />
           </Form.Item>
         </Form>
-      </Modal>
+
+        {/* Form altı tasarım özeti alanı */}
+        <div style={{ background: 'var(--ant-color-bg-layout)', padding: '16px', borderRadius: '12px', marginTop: '24px', border: '1px dashed var(--ant-color-border-secondary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <Text type="secondary">Mevcut Stok</Text>
+            <Text>{canliOnizleme.seciliUrun ? canliOnizleme.seciliUrun.stokMiktari : '0'} Adet</Text>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px dashed var(--ant-color-border-secondary)', paddingBottom: '12px' }}>
+            <Text type="secondary">İşlem Hacmi</Text>
+            <Text type={canliOnizleme.islemTuru === 'Çıkış' ? 'danger' : 'success'}>
+              {canliOnizleme.islemTuru === 'Çıkış' ? '-' : (canliOnizleme.islemTuru === 'Giriş' ? '+' : '')}
+              {canliOnizleme.miktar || 0} Adet
+            </Text>
+          </div>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            * Çıkış işlemlerinde stok miktarının sıfırın altına düşmesine izin verilmeyecektir.
+          </Text>
+        </div>
+      </Drawer>
 
       <style>{`
         .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-container); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--ant-color-border-secondary); }
