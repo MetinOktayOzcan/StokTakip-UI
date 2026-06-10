@@ -30,7 +30,8 @@ const StokHareketleri = () => {
         const decoded = jwtDecode(token);
         const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
         setKullaniciRolu(rol.toLowerCase());
-      } catch (error) {}
+      } catch (error) {
+      }
     }
   };
 
@@ -61,7 +62,7 @@ const StokHareketleri = () => {
       fetchHareketler();
       message.success("İşlem başarıyla kaydedildi.");
     } catch (error) {
-      message.error(error.response?.data?.mesaj || "Beklenmedik hata oluştu");
+      message.error("Beklenmedik hata oluştu.");
     }
   };
 
@@ -119,7 +120,7 @@ const StokHareketleri = () => {
     const kucuk = islemTuru?.toLowerCase() || '';
     if (kucuk.includes('giriş') || kucuk.includes('giris')) return { color: '#059669', bg: '#D1FAE5' };
     if (kucuk.includes('çıkış') || kucuk.includes('cikis')) return { color: '#E11D48', bg: '#FEE2E2' };
-    return { color: '#475569', bg: '#F1F5F9' };
+    return { color: 'var(--ant-color-text)', bg: 'var(--ant-color-bg-layout)' };
   };
 
   const tabloSutunlari = [
@@ -128,7 +129,7 @@ const StokHareketleri = () => {
       dataIndex: 'urunAdi', 
       key: 'urunAdi',
       width: '30%',
-      render: (text) => <span style={{ fontWeight: 600, color: '#18181B' }}>{text}</span>
+      render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>
     },
     { 
       title: 'İşlem Detayları', 
@@ -144,9 +145,9 @@ const StokHareketleri = () => {
               <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 11 }}>
                 {record.islemTuru?.toUpperCase()}
               </span>
-              <span style={{ fontWeight: 600, fontSize: 14, color: '#18181B' }}>{record.miktar} Adet</span>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{record.miktar} Adet</span>
             </div>
-            <div style={{ color: '#71717A', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CalendarOutlined />{islemZamani}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><EnvironmentOutlined />{record.konum || 'Belirtilmedi'}</span>
             </div>
@@ -159,7 +160,7 @@ const StokHareketleri = () => {
       dataIndex: 'aciklama', 
       key: 'aciklama',
       width: '35%',
-      render: (text) => <span style={{ color: '#71717A', fontSize: 13 }}>{text || '-'}</span>
+      render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>{text || '-'}</span>
     }
   ];
 
@@ -170,10 +171,10 @@ const StokHareketleri = () => {
     return (
       <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
         <Card 
-          style={{ width: '100%', borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
+          style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
           bodyStyle={{ padding: 16 }}
         >
-          <div style={{ fontWeight: 600, fontSize: 15, color: '#18181B', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>
             {record.urunAdi}
           </div>
           
@@ -181,12 +182,12 @@ const StokHareketleri = () => {
             <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
               {record.islemTuru?.toUpperCase()}
             </span>
-            <span style={{ fontWeight: 600, fontSize: 14, color: '#18181B' }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>
               {record.miktar} Adet
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: '#71717A', fontSize: 13 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}
             </span>
@@ -197,8 +198,8 @@ const StokHareketleri = () => {
 
           {record.aciklama && (
             <>
-              <div style={{ borderTop: '1px solid #E4E4E7', margin: '16px 0' }} />
-              <div style={{ color: '#71717A', fontSize: 13 }}>
+              <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '16px 0' }} />
+              <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
                 {record.aciklama}
               </div>
             </>
@@ -212,26 +213,26 @@ const StokHareketleri = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#18181B' }}>İşlemler</h2>
-          <span style={{ color: '#71717A', fontSize: 14 }}>Stok hareketlerini kaydetme ve takip etme</span>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>İşlemler</h2>
+          <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 14 }}>Stok hareketlerini kaydetme ve takip etme</span>
         </div>
         <Space>
-          <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, borderColor: '#E4E4E7', color: '#3F3F46', fontWeight: 500, height: 40 }}>
+          <Button onClick={handleExport} icon={<DownloadOutlined />} style={{ borderRadius: 8, height: 40 }}>
             Excel İndir
           </Button>
           {kullaniciRolu !== 'izleyici' && kullaniciRolu !== 'i̇zleyici' && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalAcik(true)} style={{ borderRadius: 8, background: '#2563EB', fontWeight: 500, height: 40 }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalAcik(true)} style={{ borderRadius: 8, height: 40 }}>
               Yeni İşlem
             </Button>
           )}
         </Space>
       </div>
 
-      <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, flexWrap: 'wrap' }}>
           <Input 
             placeholder="Öğeleri veya konumları ara..." 
-            prefix={<SearchOutlined style={{ color: '#A1A1AA' }} />}
+            prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
             style={{ width: isMobile ? '100%' : 260, borderRadius: 8 }}
             allowClear
             onChange={(e) => setAramaMetni(e.target.value)}
@@ -262,7 +263,7 @@ const StokHareketleri = () => {
           pagination={{ position: 'bottom', align: 'center', pageSize: 10 }}
         />
       ) : (
-        <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
           <Table 
             dataSource={filtrelenmisHareketler} 
             columns={tabloSutunlari} 
@@ -297,9 +298,9 @@ const StokHareketleri = () => {
       </Modal>
 
       <style>{`
-        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
-        .custom-row-hover:hover > td { background: #F4F4F5 !important; }
-        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-container); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--ant-color-border-secondary); }
+        .custom-row-hover:hover > td { background: var(--ant-color-bg-text-hover) !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid var(--ant-color-border-secondary); }
       `}</style>
     </div>
   );

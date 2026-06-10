@@ -28,7 +28,8 @@ const Urunler = () => {
         const decoded = jwtDecode(token);
         const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
         setKullaniciRolu(rol.toLowerCase());
-      } catch (error) {}
+      } catch (error) {
+      }
     }
   };
 
@@ -40,20 +41,17 @@ const Urunler = () => {
       setYukleniyor(false);
     } catch (error) {
       setYukleniyor(false);
-      message.error("Ürünler yüklenirken bir sorun oluştu.");
+      message.error("Ürünler çekilirken hata oluştu.");
     }
   };
 
   const fetchKategoriler = async () => {
     try {
       const response = await axios.get('/api/kategoriler');
-      if (response.data && response.data.length > 0) {
+      if (response.data) {
         setKategoriler(response.data);
-      } else {
-        message.warning("Sistemde kayıtlı kategori bulunamadı.");
       }
     } catch (error) {
-      message.error("Kategoriler sunucudan çekilemedi! Backend'i kontrol edin.");
     }
   };
 
@@ -76,7 +74,7 @@ const Urunler = () => {
     }
   }, [aramaMetni, urunler]);
 
-  const handleSave = async (degerler) => {
+  const kaydet = async (degerler) => {
     try {
       const gercekUrunID = seciliUrun ? (seciliUrun.urunID || seciliUrun.urunId) : 0;
       
@@ -91,33 +89,32 @@ const Urunler = () => {
 
       if (seciliUrun) {
         await axios.put(`/api/urunler/${gercekUrunID}`, payload);
-        message.success("Ürün başarıyla güncellendi.");
+        message.success("Ürün güncellendi.");
       } else {
         await axios.post('/api/urunler', payload);
-        message.success("Yeni ürün başarıyla eklendi.");
+        message.success("Ürün eklendi.");
       }
       setModalAcik(false);
       form.resetFields();
       setSeciliUrun(null);
       fetchUrunler();
     } catch (error) {
-      const hataDetayi = error.response?.data?.mesaj || error.response?.data?.message || "Kategori ID'si veya veriler hatalı olabilir.";
-      message.error(`Kayıt Başarısız: ${hataDetayi}`);
+      message.error("Kayıt başarısız oldu. Lütfen verileri kontrol edin.");
     }
   };
 
-  const handleDelete = async (urun) => {
+  const urunSil = async (urun) => {
     const gercekUrunID = urun.urunID || urun.urunId;
     try {
       await axios.delete(`/api/urunler/${gercekUrunID}`);
-      message.success("Ürün başarıyla silindi.");
+      message.success("Ürün silindi.");
       fetchUrunler();
     } catch (error) {
-      message.error("Silme işlemi başarısız! Bu ürüne ait stok hareketi geçmişi olabilir.");
+      message.error("Silme işlemi başarısız. Ürüne ait stok hareketi olabilir.");
     }
   };
 
-  const openModal = (urun = null) => {
+  const modalAc = (urun = null) => {
     setSeciliUrun(urun);
     if (urun) {
       let gecerliKategoriID = urun.kategoriID || urun.kategoriId;
@@ -143,7 +140,7 @@ const Urunler = () => {
   const excelIndir = () => {
     const formatliVeri = filtrelenmisUrunler.map(u => ({
       'Ürün Adı': u.urunAdi,
-      'Kategori': u.kategoriAdi || 'Kategori Yok',
+      'Kategori': u.kategoriAdi || 'Yok',
       'Konum': u.konum || '-',
       'Fiyat (TL)': u.birimFiyat,
       'Stok Miktarı': u.stokMiktari
@@ -151,14 +148,14 @@ const Urunler = () => {
     
     const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Ürünler");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Urunler");
     XLSX.writeFile(workbook, "Urun_Listesi.xlsx");
   };
 
   let tabloSutunlari = [
     { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi', render: (text) => <span style={{ fontWeight: 500 }}>{text}</span> },
     { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi', render: (text) => <Tag color="blue" bordered={false}>{text || 'Kategori Yok'}</Tag> },
-    { title: 'Konum', dataIndex: 'konum', key: 'konum', render: (text) => <span style={{ color: '#8c98a4' }}>{text || '-'}</span> },
+    { title: 'Konum', dataIndex: 'konum', key: 'konum', render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)' }}>{text || '-'}</span> },
     { title: 'Fiyat', dataIndex: 'birimFiyat', key: 'birimFiyat', render: (text) => <span style={{ fontWeight: 500, color: '#36b37e' }}>{text} TL</span> },
     { title: 'Stok', dataIndex: 'stokMiktari', key: 'stokMiktari', render: (text) => <span style={{ fontWeight: 500 }}>{text} Adet</span> }
   ];
@@ -174,11 +171,10 @@ const Urunler = () => {
           <Button 
             type="text" 
             icon={<EditOutlined style={{ color: '#1890ff', fontSize: '16px' }} />} 
-            onClick={() => openModal(record)} 
+            onClick={() => modalAc(record)} 
           />
           <Popconfirm 
-            title="Ürünü silmek istediğinize emin misiniz?" 
-            description="Üzerinde işlem geçmişi olan ürünler SİLİNEMEZ!"
+            title="Emin misiniz?" 
             onConfirm={() => urunSil(record)} 
             okText="Evet" 
             cancelText="Hayır"
@@ -205,13 +201,13 @@ const Urunler = () => {
           </Tag>
         </div>
         
-        <div style={{ color: '#8c98a4', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+        <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
           <EnvironmentOutlined />
           {record.konum || 'Konum Belirtilmedi'}
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ color: '#8c98a4', fontSize: '13px' }}>
+          <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px' }}>
             Stok: <span style={{ fontWeight: 600, color: 'var(--ant-color-text)' }}>{record.stokMiktari} Adet</span>
           </div>
           <div style={{ fontWeight: 600, fontSize: '15px', color: '#36b37e' }}>
@@ -223,20 +219,10 @@ const Urunler = () => {
           <>
             <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '16px 0 12px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <Button 
-                size="small" 
-                icon={<EditOutlined style={{ color: '#1890ff' }} />} 
-                onClick={() => openModal(record)} 
-                style={{ borderRadius: 6 }}
-              >
+              <Button size="small" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => modalAc(record)} style={{ borderRadius: 6 }}>
                 Düzenle
               </Button>
-              <Popconfirm 
-                title="Emin misiniz?" 
-                onConfirm={() => urunSil(record)} 
-                okText="Evet" 
-                cancelText="Hayır"
-              >
+              <Popconfirm title="Emin misiniz?" onConfirm={() => urunSil(record)} okText="Evet" cancelText="Hayır">
                 <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>
                   Sil
                 </Button>
@@ -253,12 +239,11 @@ const Urunler = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0 }}>Ürün Listesi</h2>
         <Space style={{ width: isMobile ? '100%' : 'auto', display: 'flex', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
-          <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderColor: '#36b37e', color: '#36b37e', borderRadius: 20 }}>
+          <Button type="default" size={isMobile ? "middle" : "large"} icon={<DownloadOutlined />} onClick={excelIndir} style={{ borderRadius: 20 }}>
             Excel İndir
           </Button>
-          
           {kullaniciRolu !== 'izleyici' && kullaniciRolu !== 'i̇zleyici' && (
-            <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => modalAc()} style={{ borderRadius: 20, background: '#2563EB' }}>
+            <Button type="primary" size={isMobile ? "middle" : "large"} icon={<PlusOutlined />} onClick={() => modalAc()} style={{ borderRadius: 20 }}>
               Yeni Ürün Ekle
             </Button>
           )}
@@ -268,7 +253,7 @@ const Urunler = () => {
       <div style={{ marginBottom: 24, padding: 16, background: 'var(--ant-color-bg-container)', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
         <Input 
           placeholder="Ürün adı, kategori veya konum ara..." 
-          prefix={<SearchOutlined style={{ color: '#8c98a4' }} />}
+          prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
           style={{ width: isMobile ? '100%' : 400, height: 40, borderRadius: 8 }}
           allowClear
           onChange={(e) => setAramaMetni(e.target.value)}
@@ -307,7 +292,7 @@ const Urunler = () => {
         cancelText="İptal"
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form form={form} layout="vertical" onFinish={kaydet}>
           <Form.Item label="Ürün Adı" name="urunAdi" rules={[{ required: true, message: 'Ürün adı zorunlu!' }]}>
             <Input placeholder="Ürün adını girin..." size="large" style={{ borderRadius: 8 }} />
           </Form.Item>
@@ -341,7 +326,7 @@ const Urunler = () => {
       </Modal>
 
       <style>{`
-        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-container); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid var(--ant-color-border-secondary); }
+        .ant-table-wrapper .ant-table-thead > tr > th { background: var(--ant-color-bg-container); color: var(--ant-color-text-secondary); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--ant-color-border-secondary); }
         .custom-row-hover:hover > td { background: var(--ant-color-bg-text-hover) !important; }
         .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid var(--ant-color-border-secondary); }
       `}</style>

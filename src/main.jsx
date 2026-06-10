@@ -19,7 +19,6 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401 && !error.config.url.includes('/login')) {
-      console.error("401 Hatası Alındı! Bizi dışarı atan API URL'si:", error.config.url);
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -33,7 +32,7 @@ const resetTimer = () => {
   timeoutId = setTimeout(() => {
     localStorage.removeItem('token');
     window.location.href = '/login';
-  }, 15 * 60 * 1000);
+  }, 900000);
 };
 
 window.addEventListener('mousemove', resetTimer);

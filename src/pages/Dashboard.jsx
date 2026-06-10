@@ -14,9 +14,9 @@ const Dashboard = () => {
   const [loglar, setLoglar] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/urunler').then(res => setUrunler(res.data)).catch(() => {});
-    axios.get('/api/stokhareketleri').then(res => setHareketler(res.data)).catch(() => {});
-    axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)).catch(() => {}); 
+    axios.get('/api/urunler').then(res => setUrunler(res.data)).catch(err => console.error(err));
+    axios.get('/api/stokhareketleri').then(res => setHareketler(res.data)).catch(err => console.error(err));
+    axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)).catch(err => console.error(err)); 
   }, []);
 
   const kritikStokUrunleri = urunler.filter(u => u.stokMiktari < 15).sort((a, b) => a.stokMiktari - b.stokMiktari);
@@ -142,11 +142,7 @@ const Dashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F4F4F5" />
                   <XAxis dataKey="gun" axisLine={false} tickLine={false} tick={{ fill: '#71717A', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717A', fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    itemStyle={{ fontSize: 13, fontWeight: 500 }}
-                    labelStyle={{ color: '#71717A', marginBottom: 4 }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E4E4E7', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} itemStyle={{ fontSize: 13, fontWeight: 500 }} labelStyle={{ color: '#71717A', marginBottom: 4 }} />
                   <Area type="monotone" dataKey="giris" stroke="#2563EB" strokeWidth={2} fillOpacity={1} fill="url(#colorGiris)" name="Giriş" />
                   <Area type="monotone" dataKey="cikis" stroke="#94A3B8" strokeWidth={2} fillOpacity={1} fill="url(#colorCikis)" name="Çıkış" />
                 </AreaChart>
