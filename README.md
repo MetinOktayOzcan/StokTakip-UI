@@ -1,16 +1,20 @@
-# React + Vite
+# Stok Takip Sistemi - Kullanıcı Arayüzü (UI)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Core API projesi ile haberleşen, stok giriş/çıkışlarını, ürün yönetimini ve sistem loglarını görselleştirdiğim React tabanlı frontend uygulaması. Projeyi geliştirirken Redux gibi ağır State Management kütüphanelerinden kaçınıp, React'in kendi hook'ları ve Ant Design'ın sunduğu esneklikle pratik, hızlı ve mobil uyumlu bir arayüz çıkarmayı hedefledim.
 
-Currently, two official plugins are available:
+## Mimari Kararlar ve Klasör Yapısı
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+* **App.jsx (Ana Çatı):** Sayfa yönlendirmelerini, oturum kontrolü mantığını ve JWT Token okuma işlemlerini merkezi olarak burada tutuyorum. Sayfa yenilendiğinde rotanın patlamaması için token'ı asenkron değil, doğrudan başlangıç state'inde çözümlüyorum.
+* **Pages:** Uygulamanın ana modüllerini (Dashboard, Urunler, Kategoriler vb.) barındıran katman. Veri çekme (fetch), tablo listeleme, form gönderme ve filtreleme işlemleri şimdilik ilgili sayfanın kendi içinde izole olarak çalışıyor.
+* **RBAC (Rol Tabanlı Görünüm):** `jwt-decode` kütüphanesi ile giriş yapan kişinin token'ından rolünü (Admin, Depo Sorumlusu, İzleyici) okuyarak arayüzü dinamik değiştiriyorum. Örneğin kullanıcı "İzleyici" ise sayfadaki "Yeni Ekle", "Düzenle" ve "Sil" butonları tamamen gizleniyor.
+* **Responsive (Mobil) Liste Yapısı:** Verileri masaüstünde Ant Design `Table` bileşeni ile gösterirken, mobil cihazlardan girildiğinde tabloların bozulmasını engellemek için ekran boyutunu algılıyorum. Mobilde tabloyu gizleyip, aynı veriyi özel tasarlanmış `Card` yapısında bir `List` olarak render ediyorum.
+* **Tema Yönetimi:** Standart Ant Design renkleri yerine `ConfigProvider` üzerinden "GitHub Dark" renk paletini sisteme entegre ettim. Kullanıcının tema tercihi (Ay/Güneş) `localStorage` üzerinde tutularak kalıcılık sağlanıyor.
 
-## React Compiler
+## Kullanılan Teknolojiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+* **React.js** (Vite altyapısı ile oluşturuldu)
+* **Ant Design (v5):** UI Bileşenleri ve Grid Sistemi
+* **Axios:** API İstekleri ve HTTP haberleşmesi
+* **Recharts:** Dashboard üzerindeki dinamik grafiklerin (Pasta ve Alan grafiği) çizimi
+* **jwt-decode:** Token çözümleme ve rol tespiti
+* **XLSX:** Tablodaki verilerin anında Excel'e aktarımı
