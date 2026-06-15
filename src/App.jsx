@@ -21,49 +21,77 @@ const { useBreakpoint } = Grid;
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  return token ? children : <Navigate to="/login" replace />;
 };
 
-const decodeToken = () => {
+const parseJwt = () => {
   const token = localStorage.getItem('token');
   if (token) {
     try {
       const decoded = jwtDecode(token);
       const adSoyad = decoded.AdSoyad || decoded.unique_name || decoded.Name || 'Kullanıcı';
       const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'Admin';
-      const formatliIsim = adSoyad.charAt(0).toUpperCase() + adSoyad.slice(1);
-      const basHarfler = formatliIsim.charAt(0).toUpperCase();
-      return { adSoyad: formatliIsim, rol, basHarfler };
+      const formattedName = adSoyad.charAt(0).toUpperCase() + adSoyad.slice(1);
+      const initials = formattedName.charAt(0).toUpperCase();
+      return { adSoyad: formattedName, rol, initials };
     } catch (error) {}
   }
-  return { adSoyad: '', rol: '', basHarfler: '' };
+  return { adSoyad: '', rol: '', initials: '' };
 };
 
 const App = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 992) {
+      return true;
+    }
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
+
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [kullanici, setKullanici] = useState(decodeToken);
+  const [currentUser, setCurrentUser] = useState(parseJwt);
   
   const navigate = useNavigate();
   const location = useLocation();
   const screens = useBreakpoint();
 
   useEffect(() => {
-    if (screens.xs || screens.sm) {
+    if (Object.keys(screens).length === 0) return; 
+
+    if (!screens.lg) {
       setCollapsed(true);
     } else {
-      setCollapsed(false);
+      setCollapsed(localStorage.getItem('sidebarCollapsed') === 'true');
     }
-  }, [screens]);
+  }, [screens.lg]);
 
   useEffect(() => {
-    setKullanici(decodeToken());
+    setCurrentUser(parseJwt());
   }, [location.pathname]);
 
+  const token = localStorage.getItem('token');
+
+  if (!token && location.pathname !== '/login') {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (token && location.pathname === '/login') {
+    return <Navigate to="/" replace />;
+  }
+
   const toggleTheme = () => {
-    const yeniTema = !isDarkMode;
-    setIsDarkMode(yeniTema);
-    localStorage.setItem('theme', yeniTema ? 'dark' : 'light');
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+  };
+
+  const handleSidebarToggle = () => {
+    setCollapsed((prev) => {
+      const newState = !prev;
+      if (window.innerWidth >= 992) {
+        localStorage.setItem('sidebarCollapsed', String(newState));
+      }
+      return newState;
+    });
   };
 
   const appTheme = isDarkMode ? {
@@ -101,9 +129,7 @@ const App = () => {
         label: isDarkMode ? 'Aydınlık Temaya Geç' : 'Karanlık Temaya Geç',
         onClick: toggleTheme
       },
-      {
-        type: 'divider',
-      },
+      { type: 'divider' },
       {
         key: 'logout',
         icon: <LogoutOutlined style={{ color: '#ff5630' }} />,
@@ -114,8 +140,8 @@ const App = () => {
   };
 
   const getMenuItems = () => {
-    const rol = kullanici.rol || '';
-    const isSekmeAdmin = rol.toLowerCase() === 'admin';
+    const rol = currentUser.rol || '';
+    const isAdmin = rol.toLowerCase() === 'admin';
 
     const items = [
       { key: '/', icon: <DashboardOutlined />, label: 'Genel Bakış' },
@@ -123,7 +149,7 @@ const App = () => {
       { key: '/stok-hareketleri', icon: <TransactionOutlined />, label: 'Stok Hareketleri' }
     ];
 
-    if (isSekmeAdmin) {
+    if (isAdmin) {
       items.push({ key: '/kategoriler', icon: <TagsOutlined />, label: 'Kategori Yönetimi' });
       items.push({ key: '/islem-gecmisi', icon: <HistoryOutlined />, label: 'Sistem Logları' });
       items.push({ key: '/kullanicilar', icon: <TeamOutlined />, label: 'Kullanıcı Yönetimi' });
@@ -215,7 +241,6 @@ const App = () => {
           trigger={null} 
           collapsible 
           collapsed={collapsed}
-          breakpoint="lg"
           collapsedWidth={screens.xs ? 0 : 80}
           width={240}
           style={{ 
@@ -255,12 +280,12 @@ const App = () => {
               <Dropdown menu={profileMenu} placement="topRight" trigger={['click']}>
                 <div className="user-profile-btn" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '8px', borderRadius: '12px', transition: 'background 0.2s', justifyContent: collapsed ? 'center' : 'flex-start' }}>
                   <Avatar style={{ backgroundColor: isDarkMode ? '#1f6feb' : '#DBD3F5', color: isDarkMode ? '#ffffff' : '#877FC1', fontWeight: 'bold', flexShrink: 0 }}>
-                    {kullanici.basHarfler}
+                    {currentUser.initials}
                   </Avatar>
                   {!collapsed && (
                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                      <span style={{ fontWeight: 600, fontSize: '14px', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kullanici.adSoyad}</span>
-                      <span style={{ fontSize: '12px', color: '#8b949e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kullanici.rol}</span>
+                      <span style={{ fontWeight: 600, fontSize: '14px', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.adSoyad}</span>
+                      <span style={{ fontSize: '12px', color: '#8b949e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.rol}</span>
                     </div>
                   )}
                 </div>
@@ -290,7 +315,7 @@ const App = () => {
               <Button
                 type="text"
                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={() => setCollapsed(!collapsed)}
+                onClick={handleSidebarToggle}
                 style={{ fontSize: '18px', width: 40, height: 40, color: appTheme.text, marginRight: screens.xs ? 0 : 16 }}
               />
               {!screens.xs && (
@@ -307,7 +332,7 @@ const App = () => {
               <Route path="/urunler" element={<PrivateRoute><Urunler /></PrivateRoute>} />
               <Route path="/stok-hareketleri" element={<PrivateRoute><StokHareketleri /></PrivateRoute>} />
               
-              {(kullanici.rol || '').toLowerCase() === 'admin' && (
+              {(currentUser.rol || '').toLowerCase() === 'admin' && (
                 <>
                   <Route path="/kategoriler" element={<PrivateRoute><Kategoriler /></PrivateRoute>} />
                   <Route path="/islem-gecmisi" element={<PrivateRoute><IslemGecmisi /></PrivateRoute>} />

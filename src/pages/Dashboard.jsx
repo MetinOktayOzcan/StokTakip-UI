@@ -19,30 +19,30 @@ const Dashboard = () => {
     axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)).catch(err => console.error(err)); 
   }, []);
 
-  const kritikStokUrunleri = urunler.filter(u => u.stokMiktari < 15).sort((a, b) => a.stokMiktari - b.stokMiktari);
-  const kritikStokSayisi = urunler.filter(u => u.stokMiktari < 15).length;
+  const kritikStokUrunleri = urunler.filter(u => u.stokAdedi < 15).sort((a, b) => a.stokAdedi - b.stokAdedi);
+  const kritikStokSayisi = urunler.filter(u => u.stokAdedi < 15).length;
   
-  let toplamAdet = 0;
-  let toplamDeger = 0;
+  let totalAdet = 0;
+  let totalValue = 0;
   
   urunler.forEach(u => {
-    toplamAdet += u.stokMiktari;
-    toplamDeger += (u.stokMiktari * u.birimFiyat);
+    totalAdet += u.stokAdedi;
+    totalValue += (u.stokAdedi * u.birimFiyati);
   });
 
   const bugun = new Date().toLocaleDateString('tr-TR');
   const bugunkuIslemler = hareketler.filter(h => new Date(h.islemTarihi).toLocaleDateString('tr-TR') === bugun).length;
   const sonLoglar = loglar.slice(0, 6);
 
-  const kategoriData = {};
+  const categoryMap = {};
   urunler.forEach(u => {
     const kat = u.kategoriAdi || 'Diğer';
-    kategoriData[kat] = (kategoriData[kat] || 0) + u.stokMiktari;
+    categoryMap[kat] = (categoryMap[kat] || 0) + u.stokAdedi;
   });
 
-  const pieData = Object.keys(kategoriData).map(k => ({ name: k, value: kategoriData[k] })).sort((a, b) => b.value - a.value);
+  const chartData = Object.keys(categoryMap).map(k => ({ name: k, value: categoryMap[k] })).sort((a, b) => b.value - a.value);
 
-  const haftalikVeri = [...Array(7)].map((_, i) => {
+  const weeklyData = [...Array(7)].map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     return {
@@ -57,16 +57,15 @@ const Dashboard = () => {
     if (!hareket.islemTarihi) return;
     
     const islemZamani = new Date(hareket.islemTarihi).toLocaleDateString('tr-TR');
-    const index = haftalikVeri.findIndex(d => d.tamTarih === islemZamani);
+    const index = weeklyData.findIndex(d => d.tamTarih === islemZamani);
     
     if (index !== -1) {
-      const tur = hareket.islemTuru || '';
-      const kucukTur = tur.toLowerCase();
+      const islemType = hareket.islemTuru?.toLowerCase() || '';
       
-      if (kucukTur.includes('giriş') || kucukTur.includes('giris')) {
-        haftalikVeri[index].giris += hareket.miktar || 0;
-      } else if (kucukTur.includes('çıkış') || kucukTur.includes('cikis')) {
-        haftalikVeri[index].cikis += hareket.miktar || 0;
+      if (islemType.includes('giriş') || islemType.includes('giris')) {
+        weeklyData[index].giris += hareket.miktar || 0;
+      } else if (islemType.includes('çıkış') || islemType.includes('cikis')) {
+        weeklyData[index].cikis += hareket.miktar || 0;
       }
     }
   });
@@ -75,9 +74,9 @@ const Dashboard = () => {
     { title: '#', key: 'index', width: 40, render: (text, record) => <Text style={{ color: '#A1A1AA', fontWeight: 500 }}>{kritikStokUrunleri.indexOf(record) + 1}</Text> },
     { title: 'Ürün', dataIndex: 'urunAdi', key: 'urunAdi', render: (text) => <Text style={{ fontWeight: 500, color: '#18181B' }}>{text}</Text> },
     { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi', render: (text) => <Text style={{ color: '#71717A' }}>{text || '-'}</Text> },
-    { title: 'Stok', dataIndex: 'stokMiktari', key: 'stokMiktari', render: (text) => <Text style={{ fontWeight: 600 }}>{text}</Text> },
+    { title: 'Stok', dataIndex: 'stokAdedi', key: 'stokAdedi', render: (text) => <Text style={{ fontWeight: 600 }}>{text}</Text> },
     { title: 'Durum', key: 'status', render: (_, record) => {
-        const isCritical = record.stokMiktari < 10;
+        const isCritical = record.stokAdedi < 10;
         return (
           <Tag color={isCritical ? 'error' : 'warning'} style={{ borderRadius: 12, border: 0, fontWeight: 500, padding: '2px 8px' }}>
             {isCritical ? 'Kritik' : 'Azalıyor'}
@@ -116,8 +115,8 @@ const Dashboard = () => {
       </div>
 
       <Row gutter={[24, 24]}>
-        <Col xs={24} sm={12} lg={6}><StatCard title="Toplam Ürün Sayısı" value={toplamAdet.toLocaleString()} icon={<AppstoreOutlined />} trend="+12.5%" /></Col>
-        <Col xs={24} sm={12} lg={6}><StatCard title="Stok Değeri" value={`$${toplamDeger.toLocaleString()}`} icon={<RiseOutlined />} trend="+4.1%" /></Col>
+        <Col xs={24} sm={12} lg={6}><StatCard title="Toplam Ürün Sayısı" value={totalAdet.toLocaleString()} icon={<AppstoreOutlined />} trend="+12.5%" /></Col>
+        <Col xs={24} sm={12} lg={6}><StatCard title="Stok Değeri" value={`${totalValue.toLocaleString()} ₺`} icon={<RiseOutlined />} trend="+4.1%" /></Col>
         <Col xs={24} sm={12} lg={6}><StatCard title="Bugünün İşlemleri" value={bugunkuIslemler} icon={<ShoppingCartOutlined />} trend="+24 bugün" /></Col>
         <Col xs={24} sm={12} lg={6}><StatCard title="Önemli Uyarılar" value={kritikStokSayisi} icon={<AlertOutlined />} isAlert trend={`${kritikStokSayisi} ürün eşik altında`} /></Col>
       </Row>
@@ -128,7 +127,7 @@ const Dashboard = () => {
             <Title level={5} style={{ margin: '0 0 24px 0', fontSize: 15, fontWeight: 600 }}>Haftalık Stok Dalgalanması</Title>
             <div style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={haftalikVeri} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <AreaChart data={weeklyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorGiris" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15}/>
@@ -157,19 +156,19 @@ const Dashboard = () => {
             <div style={{ height: 200, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                  <Pie data={chartData} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E4E4E7' }} itemStyle={{ color: '#18181B' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                <Text style={{ fontSize: 24, fontWeight: 600, color: '#18181B', display: 'block', lineHeight: 1 }}>{pieData.length}</Text>
+                <Text style={{ fontSize: 24, fontWeight: 600, color: '#18181B', display: 'block', lineHeight: 1 }}>{chartData.length}</Text>
                 <Text style={{ fontSize: 11, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kategori</Text>
               </div>
             </div>
             <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {pieData.slice(0, 4).map((item, idx) => (
+              {chartData.slice(0, 4).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PIE_COLORS[idx] }} />
