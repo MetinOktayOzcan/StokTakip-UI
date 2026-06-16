@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Drawer, Form, Input, InputNumber, Space, message, Popconfirm, Select, Grid, List, Card, Tag, Typography } from 'antd';
+import { Table, Button, Drawer, Form, Input, InputNumber, Space, message, Popconfirm, Select, Grid, Card, Tag, Typography, Pagination } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, DownloadOutlined, EnvironmentOutlined, EyeOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { jwtDecode } from 'jwt-decode';
 
 const { useBreakpoint } = Grid;
 const { Text, Title } = Typography;
+
+const getId = (item) => item?.urunID || item?.urunId;
+const getKatId = (item) => item?.kategoriID || item?.kategoriId;
 
 const Urunler = () => {
   const [urunler, setUrunler] = useState([]);
@@ -21,31 +23,35 @@ const Urunler = () => {
 
   const [searchText, setSearchText] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [mobilSayfa, setMobilSayfa] = useState(1);
   const [form] = Form.useForm();
 
   const screens = useBreakpoint();
   const isMobile = screens.xs; 
 
   const checkUserRole = () => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    const info = localStorage.getItem('userInfo');
+    if (info) {
       try {
-        const decoded = jwtDecode(token);
-        const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
+        const parsed = JSON.parse(info);
+        const rol = parsed.rol || 'izleyici';
         setUserRole(rol.toLowerCase());
-      } catch (error) {}
+      } catch {
+        setUserRole('izleyici');
+      }
     }
   };
 
   const fetchUrunler = async () => {
     try {
+      setLoading(true);
       const response = await axios.get('/api/urunler');
       setUrunler(response.data);
       setFilteredUrunler(response.data);
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
+    } catch {
       message.error("Ürünler çekilirken hata oluştu.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,7 +61,7 @@ const Urunler = () => {
       if (response.data) {
         setKategoriler(response.data);
       }
-    } catch (error) {}
+    } catch {}
   };
 
   useEffect(() => {
@@ -76,11 +82,12 @@ const Urunler = () => {
     } else {
       setFilteredUrunler(urunler);
     }
+    setMobilSayfa(1);
   }, [searchText, urunler]);
 
   const handleSave = async (values) => {
     try {
-      const productId = seciliUrun ? (seciliUrun.urunID || seciliUrun.urunId) : 0;
+      const productId = seciliUrun ? getId(seciliUrun) : 0;
       
       const payload = {
         urunAdi: values.urunAdi,
@@ -99,18 +106,17 @@ const Urunler = () => {
       }
       closeDrawer();
       fetchUrunler();
-    } catch (error) {
+    } catch {
       message.error("Kayıt başarısız oldu. Lütfen verileri kontrol edin.");
     }
   };
 
   const handleDelete = async (urun) => {
-    const productId = urun.urunID || urun.urunId;
     try {
-      await axios.delete(`/api/urunler/${productId}`);
+      await axios.delete(`/api/urunler/${getId(urun)}`);
       message.success("Ürün silindi.");
       fetchUrunler();
-    } catch (error) {
+    } catch {
       message.error("Silme işlemi başarısız. Ürüne ait stok hareketi olabilir.");
     }
   };
@@ -121,11 +127,9 @@ const Urunler = () => {
     setDrawerAcik(true);
     
     try {
-      const response = await axios.get('/api/stokhareketleri');
-      const productId = urun.urunID || urun.urunId;
-      const hareketler = response.data.filter(h => h.urunID === productId || h.urunId === productId);
-      setUrunHistory(hareketler);
-    } catch (error) {
+      const response = await axios.get(`/api/stokhareketleri/urun/${getId(urun)}`);
+      setUrunHistory(response.data);
+    } catch {
       setUrunHistory([]);
     }
   };
@@ -134,10 +138,10 @@ const Urunler = () => {
     setSeciliUrun(urun);
     setDrawerMod('form');
     if (urun) {
-      let gecerliKategoriID = urun.kategoriID || urun.kategoriId;
+      let gecerliKategoriID = getKatId(urun);
       if (!gecerliKategoriID || gecerliKategoriID === 0) {
         const foundCategory = kategoriler.find(k => k.kategoriAdi === urun.kategoriAdi);
-        gecerliKategoriID = foundCategory ? (foundCategory.kategoriID || foundCategory.kategoriId) : undefined;
+        gecerliKategoriID = foundCategory ? getKatId(foundCategory) : undefined;
       }
       form.setFieldsValue({
         urunAdi: urun.urunAdi,
@@ -160,10 +164,17 @@ const Urunler = () => {
   };
 
   const handleExport = () => {
+    const sanitizeExcel = (text) => {
+      if (typeof text === 'string' && /^[=+\-@]/.test(text)) {
+        return "'" + text;
+      }
+      return text;
+    };
+
     const formattedData = filteredUrunler.map(u => ({
-      'Ürün Adı': u.urunAdi,
-      'Kategori': u.kategoriAdi || 'Yok',
-      'Konum': u.konum || '-',
+      'Ürün Adı': sanitizeExcel(u.urunAdi),
+      'Kategori': sanitizeExcel(u.kategoriAdi) || 'Yok',
+      'Konum': sanitizeExcel(u.konum) || '-',
       'Fiyat (TL)': u.birimFiyati,
       'Stok Miktarı': u.stokAdedi
     }));
@@ -176,7 +187,7 @@ const Urunler = () => {
 
   let columns = [
     { title: 'Ürün Adı', dataIndex: 'urunAdi', key: 'urunAdi', render: (text) => <span style={{ fontWeight: 500, color: 'var(--ant-color-text)' }}>{text}</span> },
-    { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi', render: (text) => <Tag color="blue" bordered={false}>{text || 'Kategori Yok'}</Tag> },
+    { title: 'Kategori', dataIndex: 'kategoriAdi', key: 'kategoriAdi', render: (text) => <Tag color="blue" variant="borderless">{text || 'Kategori Yok'}</Tag> },
     { title: 'Konum', dataIndex: 'konum', key: 'konum', render: (text) => <span style={{ color: 'var(--ant-color-text-secondary)' }}>{text || '-'}</span> },
     { title: 'Fiyat', dataIndex: 'birimFiyati', key: 'birimFiyati', render: (text) => <span style={{ fontWeight: 500, color: '#36b37e' }}>{text} TL</span> },
     { title: 'Stok', dataIndex: 'stokAdedi', key: 'stokAdedi', render: (text) => <span style={{ fontWeight: 500, color: 'var(--ant-color-text)' }}>{text} Adet</span> }
@@ -201,53 +212,54 @@ const Urunler = () => {
   }
 
   const renderMobileItem = (record) => (
-    <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card 
-        style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--ant-color-text)', paddingRight: '8px', cursor: 'pointer' }} onClick={() => openUrunDetay(record)}>{record.urunAdi}</div>
-          <Tag color="blue" bordered={false} style={{ margin: 0, whiteSpace: 'nowrap' }}>
-            {record.kategoriAdi || 'Kategori Yok'}
-          </Tag>
+    <Card 
+      key={getId(record)}
+      style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
+      styles={{ body: { padding: 16 } }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--ant-color-text)', paddingRight: '8px', cursor: 'pointer' }} onClick={() => openUrunDetay(record)}>{record.urunAdi}</div>
+        <Tag color="blue" variant="borderless" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+          {record.kategoriAdi || 'Kategori Yok'}
+        </Tag>
+      </div>
+      
+      <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+        <EnvironmentOutlined />
+        {record.konum || 'Konum Belirtilmedi'}
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px' }}>
+          Stok: <span style={{ fontWeight: 600, color: 'var(--ant-color-text)' }}>{record.stokAdedi} Adet</span>
         </div>
-        
-        <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-          <EnvironmentOutlined />
-          {record.konum || 'Konum Belirtilmedi'}
+        <div style={{ fontWeight: 600, fontSize: '15px', color: '#36b37e' }}>
+          {record.birimFiyati} TL
         </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: '13px' }}>
-            Stok: <span style={{ fontWeight: 600, color: 'var(--ant-color-text)' }}>{record.stokAdedi} Adet</span>
-          </div>
-          <div style={{ fontWeight: 600, fontSize: '15px', color: '#36b37e' }}>
-            {record.birimFiyati} TL
-          </div>
-        </div>
+      </div>
 
-        {userRole !== 'izleyici' && userRole !== 'i̇zleyici' && (
-          <>
-            <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '16px 0 12px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <Button size="small" icon={<EyeOutlined />} onClick={() => openUrunDetay(record)} style={{ borderRadius: 6 }}>
-                Detay
+      {userRole !== 'izleyici' && userRole !== 'i̇zleyici' && (
+        <>
+          <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '16px 0 12px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Button size="small" icon={<EyeOutlined />} onClick={() => openUrunDetay(record)} style={{ borderRadius: 6 }}>
+              Detay
+            </Button>
+            <Button size="small" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => openForm(record)} style={{ borderRadius: 6 }}>
+              Düzenle
+            </Button>
+            <Popconfirm title="Emin misiniz?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
+              <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>
+                Sil
               </Button>
-              <Button size="small" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => openForm(record)} style={{ borderRadius: 6 }}>
-                Düzenle
-              </Button>
-              <Popconfirm title="Emin misiniz?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
-                <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>
-                  Sil
-                </Button>
-              </Popconfirm>
-            </div>
-          </>
-        )}
-      </Card>
-    </List.Item>
+            </Popconfirm>
+          </div>
+        </>
+      )}
+    </Card>
   );
+
+  const sayfaVerisi = filteredUrunler.slice((mobilSayfa - 1) * 10, mobilSayfa * 10);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -268,7 +280,7 @@ const Urunler = () => {
         </Space>
       </div>
 
-      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 16 } }}>
         <Input 
           placeholder="Ürün adı, kategori veya konum ara..." 
           prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
@@ -279,22 +291,28 @@ const Urunler = () => {
       </Card>
 
       {isMobile ? (
-        <List
-          dataSource={filteredUrunler}
-          renderItem={renderMobileItem}
-          loading={loading}
-          rowKey={(record) => record.urunID || record.urunId}
-          pagination={{ position: 'bottom', align: 'center', pageSize: 10 }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!loading && sayfaVerisi.map(renderMobileItem)}
+          {!loading && filteredUrunler.length > 0 && (
+            <Pagination 
+              current={mobilSayfa} 
+              total={filteredUrunler.length} 
+              pageSize={10} 
+              onChange={setMobilSayfa} 
+              align="center" 
+              size="small"
+            />
+          )}
+        </div>
       ) : (
-        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 0 } }}>
           <Table 
             dataSource={filteredUrunler} 
             columns={columns} 
-            rowKey={(record) => record.urunID || record.urunId} 
+            rowKey={getId} 
             loading={loading}
             scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            pagination={{ placement: ['bottomCenter'], pageSize: 10 }}
             rowClassName={() => 'custom-row-hover'}
             style={{ background: 'transparent' }}
           />
@@ -303,7 +321,7 @@ const Urunler = () => {
 
       <Drawer
         title={drawerMod === 'detay' ? "Ürün Detayları ve Geçmişi" : (seciliUrun ? "Ürünü Düzenle" : "Yeni Ürün Ekle")}
-        width={isMobile ? '100%' : 500}
+        size="default"
         onClose={closeDrawer}
         open={drawerAcik}
         destroyOnClose
@@ -333,7 +351,7 @@ const Urunler = () => {
                 size="large" 
                 style={{ borderRadius: 8 }}
                 options={kategoriler.map((kat) => ({
-                  value: kat.kategoriID || kat.kategoriId,
+                  value: getKatId(kat),
                   label: kat.kategoriAdi,
                 }))}
               />

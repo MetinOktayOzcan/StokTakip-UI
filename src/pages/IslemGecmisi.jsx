@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Select, DatePicker, Grid, List, Card, Button } from 'antd';
+import { Table, Input, Select, DatePicker, Grid, Card, Button, Pagination } from 'antd';
 import { SearchOutlined, ClockCircleOutlined, UserOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
+
+const formatLogTarihi = (tarih) => {
+  if (!tarih) return '-';
+  return new Date(tarih).toLocaleString('tr-TR', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+};
+
+const getId = (log) => log?.logID || log?.logId;
 
 const IslemGecmisi = () => {
   const [loglar, setLoglar] = useState([]);
@@ -15,17 +28,19 @@ const IslemGecmisi = () => {
   const [aramaMetni, setAramaMetni] = useState('');
   const [tarihAraligi, setTarihAraligi] = useState(null);
   const [tipFiltresi, setTipFiltresi] = useState(null);
+  const [mobilSayfa, setMobilSayfa] = useState(1);
 
   const screens = useBreakpoint();
   const isMobile = screens.xs;
 
   const fetchLogs = async () => {
     try {
+      setYukleniyor(true);
       const response = await axios.get('/api/islemgecmisi');
       setLoglar(response.data);
       setFiltrelenmisLoglar(response.data);
-      setYukleniyor(false);
-    } catch (error) {
+    } catch {
+    } finally {
       setYukleniyor(false);
     }
   };
@@ -38,10 +53,11 @@ const IslemGecmisi = () => {
     let sonuc = loglar;
 
     if (aramaMetni) {
+      const aramaKucuk = aramaMetni.toLowerCase();
       sonuc = sonuc.filter(l => 
-        l.detay?.toLowerCase().includes(aramaMetni.toLowerCase()) || 
-        l.kullanici?.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-        l.islemTipi?.toLowerCase().includes(aramaMetni.toLowerCase())
+        l.detay?.toLowerCase().includes(aramaKucuk) || 
+        l.kullanici?.toLowerCase().includes(aramaKucuk) ||
+        l.islemTipi?.toLowerCase().includes(aramaKucuk)
       );
     }
 
@@ -60,6 +76,7 @@ const IslemGecmisi = () => {
     }
 
     setFiltrelenmisLoglar(sonuc);
+    setMobilSayfa(1);
   }, [aramaMetni, tarihAraligi, tipFiltresi, loglar]);
 
   const getTagStyle = (tip) => {
@@ -71,11 +88,16 @@ const IslemGecmisi = () => {
   };
 
   const handleExport = () => {
+    const sanitizeExcel = (text) => {
+      if (typeof text === 'string' && /^[=+\-@]/.test(text)) return "'" + text;
+      return text;
+    };
+
     const formatliVeri = filtrelenmisLoglar.map(l => ({
-      'Tarih': new Date(l.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
-      'İşlem Tipi': l.islemTipi,
-      'Kullanıcı': l.kullanici,
-      'Detay': l.detay
+      'Tarih': formatLogTarihi(l.islemTarihi),
+      'İşlem Tipi': sanitizeExcel(l.islemTipi),
+      'Kullanıcı': sanitizeExcel(l.kullanici),
+      'Detay': sanitizeExcel(l.detay)
     }));
     
     const worksheet = XLSX.utils.json_to_sheet(formatliVeri);
@@ -92,7 +114,7 @@ const IslemGecmisi = () => {
       width: '15%',
       render: (text) => {
         const style = getTagStyle(text);
-        return <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>{text?.toUpperCase()}</span>
+        return <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', display: 'inline-block' }}>{text?.toUpperCase()}</span>
       }
     },
     {
@@ -100,7 +122,7 @@ const IslemGecmisi = () => {
       dataIndex: 'detay',
       key: 'detay',
       width: '50%',
-      render: (text) => <span style={{ color: 'var(--ant-color-text)', fontWeight: 500 }}>{text}</span>
+      render: (text) => <span style={{ color: 'var(--ant-color-text)', fontWeight: 500, whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>{text}</span>
     },
     {
       title: 'Kullanıcı',
@@ -122,9 +144,9 @@ const IslemGecmisi = () => {
       key: 'islemTarihi',
       width: '20%',
       render: (text) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ant-color-text-secondary)', fontSize: '13px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ant-color-text-secondary)', fontSize: '13px', whiteSpace: 'nowrap' }}>
           <ClockCircleOutlined />
-          {new Date(text).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
+          {formatLogTarihi(text)}
         </span>
       )
     }
@@ -134,35 +156,36 @@ const IslemGecmisi = () => {
     const style = getTagStyle(record.islemTipi);
     
     return (
-      <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-        <Card 
-          style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
-          bodyStyle={{ padding: 16 }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
-              {record.islemTipi?.toUpperCase()}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ant-color-text-secondary)', fontSize: '12px' }}>
-              <ClockCircleOutlined />
-              {new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
-            </span>
-          </div>
-          
-          <div style={{ color: 'var(--ant-color-text)', fontSize: '14px', lineHeight: '1.5', marginBottom: 16, fontWeight: 500 }}>
-            {record.detay}
-          </div>
+      <Card 
+        key={getId(record)}
+        style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}
+        styles={{ body: { padding: 16 } }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <span style={{ backgroundColor: style.bg, color: style.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
+            {record.islemTipi?.toUpperCase()}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ant-color-text-secondary)', fontSize: '12px' }}>
+            <ClockCircleOutlined />
+            {formatLogTarihi(record.islemTarihi)}
+          </span>
+        </div>
+        
+        <div style={{ color: 'var(--ant-color-text)', fontSize: '14px', lineHeight: '1.5', marginBottom: 16, fontWeight: 500 }}>
+          {record.detay}
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px', color: 'var(--ant-color-text)', fontSize: '13px', fontWeight: 500 }}>
-            <div style={{ background: 'var(--ant-color-bg-layout)', padding: '4px', borderRadius: '50%', display: 'flex' }}>
-              <UserOutlined style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }} />
-            </div>
-            {record.kullanici}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: '12px', color: 'var(--ant-color-text)', fontSize: '13px', fontWeight: 500 }}>
+          <div style={{ background: 'var(--ant-color-bg-layout)', padding: '4px', borderRadius: '50%', display: 'flex' }}>
+            <UserOutlined style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }} />
           </div>
-        </Card>
-      </List.Item>
+          {record.kullanici}
+        </div>
+      </Card>
     );
   };
+
+  const sayfaVerisi = filtrelenmisLoglar.slice((mobilSayfa - 1) * 15, mobilSayfa * 15);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -176,7 +199,7 @@ const IslemGecmisi = () => {
         </Button>
       </div>
 
-      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} styles={{ body: { padding: 16 } }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>
           <Input 
             placeholder="Detay veya kullanıcı ara..." 
@@ -206,22 +229,28 @@ const IslemGecmisi = () => {
       </Card>
 
       {isMobile ? (
-        <List
-          dataSource={filtrelenmisLoglar}
-          renderItem={mobilListeRender}
-          loading={yukleniyor}
-          rowKey={(record) => record.logID || record.logId}
-          pagination={{ position: 'bottom', align: 'center', pageSize: 15 }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!yukleniyor && sayfaVerisi.map(mobilListeRender)}
+          {!yukleniyor && filtrelenmisLoglar.length > 0 && (
+            <Pagination 
+              current={mobilSayfa} 
+              total={filtrelenmisLoglar.length} 
+              pageSize={15} 
+              onChange={setMobilSayfa} 
+              align="center" 
+              size="small"
+            />
+          )}
+        </div>
       ) : (
-        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} styles={{ body: { padding: 0 } }}>
           <Table 
             dataSource={filtrelenmisLoglar} 
             columns={tabloSutunlari} 
-            rowKey={(record) => record.logID || record.logId}
+            rowKey={getId}
             loading={yukleniyor} 
-            scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 15, position: ['bottomCenter'] }}
+            scroll={{ x: 800 }}
+            pagination={{ placement: ['bottomCenter'], pageSize: 15 }}
             rowClassName={() => 'custom-row-hover'}
             style={{ background: 'transparent' }}
           />

@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Drawer, Form, Input, InputNumber, Select, message, DatePicker, Space, Grid, Card, List, Typography } from 'antd';
+import { Table, Button, Drawer, Form, Input, InputNumber, Select, message, DatePicker, Space, Grid, Card, Typography, Pagination } from 'antd';
 import { SearchOutlined, PlusOutlined, CalendarOutlined, EnvironmentOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { jwtDecode } from 'jwt-decode';
 
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
+
+const getId = (urun) => urun?.urunID || urun?.urunId;
+
+const formatTarih = (tarih) => {
+  if (!tarih) return '-';
+  return new Date(tarih).toLocaleString('tr-TR', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+};
 
 const StokHareketleri = () => {
   const [hareketler, setHareketler] = useState([]);
@@ -22,19 +34,22 @@ const StokHareketleri = () => {
   const [dateRange, setDateRange] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [userRole, setUserRole] = useState('');
+  const [mobilSayfa, setMobilSayfa] = useState(1);
   
   const [form] = Form.useForm();
   const screens = useBreakpoint();
   const isMobile = screens.xs; 
 
   const fetchUserRole = () => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    const info = localStorage.getItem('userInfo');
+    if (info) {
       try {
-        const decoded = jwtDecode(token);
-        const rol = decoded.role || decoded.Rol || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
+        const parsed = JSON.parse(info);
+        const rol = parsed.rol || 'izleyici';
         setUserRole(rol.toLowerCase());
-      } catch (error) {}
+      } catch {
+        setUserRole('izleyici');
+      }
     }
   };
 
@@ -43,8 +58,8 @@ const StokHareketleri = () => {
       const response = await axios.get('/api/stokhareketleri');
       setHareketler(response.data);
       setFilteredData(response.data);
-      setLoading(false);
-    } catch (error) {
+    } catch {
+    } finally {
       setLoading(false);
     }
   };
@@ -53,7 +68,7 @@ const StokHareketleri = () => {
     try {
       const response = await axios.get('/api/urunler');
       setUrunListesi(response.data);
-    } catch (error) {}
+    } catch {}
   };
 
   const handleSave = async (values) => {
@@ -96,10 +111,11 @@ const StokHareketleri = () => {
       });
     }
     setFilteredData(result);
+    setMobilSayfa(1);
   }, [searchText, dateRange, typeFilter, hareketler]);
 
   const handleValuesChange = (changedValues, allValues) => {
-    const urun = urunListesi.find(u => (u.urunID || u.urunId) === allValues.urunID);
+    const urun = urunListesi.find(u => getId(u) === allValues.urunID);
     setPreviewState({
       seciliUrun: urun || null,
       miktar: allValues.miktar || 0,
@@ -114,13 +130,18 @@ const StokHareketleri = () => {
   };
 
   const handleExport = () => {
+    const sanitizeExcel = (text) => {
+      if (typeof text === 'string' && /^[=+\-@]/.test(text)) return "'" + text;
+      return text;
+    };
+
     const formattedData = filteredData.map(h => ({
-      'Tarih': new Date(h.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
-      'Ürün Adı': h.urunAdi,
-      'İşlem Türü': h.islemTuru === 'Giris' ? 'Giriş' : (h.islemTuru === 'Cikis' ? 'Çıkış' : h.islemTuru),
+      'Tarih': formatTarih(h.islemTarihi),
+      'Ürün Adı': sanitizeExcel(h.urunAdi),
+      'İşlem Türü': h.islemTuru === 'Giris' ? 'Giriş' : (h.islemTuru === 'Cikis' ? 'Çıkış' : sanitizeExcel(h.islemTuru)),
       'Miktar': h.miktar,
-      'Konum': h.konum || 'Belirtilmedi',
-      'Açıklama': h.aciklama || '-'
+      'Konum': sanitizeExcel(h.konum) || 'Belirtilmedi',
+      'Açıklama': sanitizeExcel(h.aciklama) || '-'
     }));
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
@@ -143,7 +164,7 @@ const StokHareketleri = () => {
       width: '35%',
       render: (_, record) => {
         const tag = getTagStyle(record.islemTuru);
-        const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
+        const islemZamani = formatTarih(record.islemTarihi);
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -163,23 +184,23 @@ const StokHareketleri = () => {
 
   const renderMobileItem = (record) => {
     const tag = getTagStyle(record.islemTuru);
-    const islemZamani = record.islemTarihi ? new Date(record.islemTarihi).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
+    const islemZamani = formatTarih(record.islemTarihi);
     return (
-      <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-        <Card style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{record.urunAdi}</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>{tag.label}</span>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>{record.miktar} Adet</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><EnvironmentOutlined style={{ fontSize: 14 }} /> {record.konum || 'Belirtilmedi'}</span>
-          </div>
-        </Card>
-      </List.Item>
+      <Card key={record.hareketID || record.id || Math.random().toString()} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 16 } }}>
+        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>{record.urunAdi}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ backgroundColor: tag.bg, color: tag.color, padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12 }}>{tag.label}</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{record.miktar} Adet</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarOutlined style={{ fontSize: 14 }} /> {islemZamani}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><EnvironmentOutlined style={{ fontSize: 14 }} /> {record.konum || 'Belirtilmedi'}</span>
+        </div>
+      </Card>
     );
   };
+
+  const sayfaVerisi = filteredData.slice((mobilSayfa - 1) * 10, mobilSayfa * 10);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -198,7 +219,7 @@ const StokHareketleri = () => {
         </Space>
       </div>
 
-      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 16 } }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, flexWrap: 'wrap' }}>
           <Input placeholder="Öğeleri veya konumları ara..." prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />} style={{ width: isMobile ? '100%' : 260, borderRadius: 8 }} allowClear onChange={(e) => setSearchText(e.target.value)} />
           <Select placeholder="İşlem Türü" style={{ width: isMobile ? '100%' : 150 }} allowClear onChange={(value) => setTypeFilter(value)} options={[{ value: 'Giris', label: 'Giriş' }, { value: 'Cikis', label: 'Çıkış' }]} />
@@ -207,16 +228,28 @@ const StokHareketleri = () => {
       </Card>
 
       {isMobile ? (
-        <List dataSource={filteredData} renderItem={renderMobileItem} loading={loading} rowKey="hareketID" pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!loading && sayfaVerisi.map(renderMobileItem)}
+          {!loading && filteredData.length > 0 && (
+            <Pagination 
+              current={mobilSayfa} 
+              total={filteredData.length} 
+              pageSize={10} 
+              onChange={setMobilSayfa} 
+              align="center" 
+              size="small"
+            />
+          )}
+        </div>
       ) : (
-        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
-          <Table dataSource={filteredData} columns={columns} rowKey="hareketID" loading={loading} scroll={{ x: 'max-content' }} pagination={{ pageSize: 10, position: ['bottomCenter'] }} rowClassName={() => 'custom-row-hover'} style={{ background: 'transparent' }} />
+        <Card style={{ borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 0 } }}>
+          <Table dataSource={filteredData} columns={columns} rowKey={(record) => record.hareketID || record.id || Math.random().toString()} loading={loading} scroll={{ x: 'max-content' }} pagination={{ placement: ['bottomCenter'], pageSize: 10 }} rowClassName={() => 'custom-row-hover'} style={{ background: 'transparent' }} />
         </Card>
       )}
 
       <Drawer
         title="Yeni Stok Hareketi Oluştur"
-        width={isMobile ? '100%' : 500}
+        size="default"
         onClose={formKapat}
         open={drawerAcik}
         destroyOnClose
@@ -244,7 +277,7 @@ const StokHareketleri = () => {
       >
         <Form form={form} layout="vertical" onValuesChange={handleValuesChange} onFinish={handleSave}>
           <Form.Item label="Ürün Seç" name="urunID" rules={[{ required: true, message: 'Ürün seçimi zorunlu!' }]}>
-            <Select showSearch placeholder="Ürün ara veya seç..." optionFilterProp="label" size="large" style={{ borderRadius: 8 }} options={urunListesi.map((urun) => ({ value: urun.urunID || urun.urunId, label: urun.urunAdi }))} />
+            <Select showSearch placeholder="Ürün ara veya seç..." optionFilterProp="label" size="large" style={{ borderRadius: 8 }} options={urunListesi.map((urun) => ({ value: getId(urun), label: urun.urunAdi }))} />
           </Form.Item>
           
           <div style={{ display: 'flex', gap: '16px' }}>

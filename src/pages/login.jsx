@@ -18,13 +18,18 @@ const Login = () => {
     
     try {
       const response = await axios.post('/api/auth/login', {
-        kullaniciAdi: kullaniciAdi,
-        sifre: sifre
+        kullaniciAdi,
+        sifre
       });
 
-      localStorage.setItem('token', response.data.token);
+      const userInfo = {
+        adSoyad: response.data.adSoyad,
+        rol: response.data.rol
+      };
+      
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
       navigate('/');
-    } catch (error) {
+    } catch {
       message.error('Giriş başarısız oldu. Kullanıcı adı veya şifreyi kontrol edin.');
     } finally {
       setLoading(false);
@@ -34,12 +39,7 @@ const Login = () => {
   return (
     <Layout style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--ant-color-bg-layout)' }}>
       <Card 
-        style={{ 
-          width: 400, 
-          borderRadius: 12, 
-          border: '1px solid var(--ant-color-border-secondary)', 
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' 
-        }} 
+        style={{ width: 400, borderRadius: 12, border: '1px solid var(--ant-color-border-secondary)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }} 
         bodyStyle={{ padding: '40px 32px' }}
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -74,19 +74,7 @@ const Login = () => {
             />
           </div>
           
-          <Button 
-            type="primary" 
-            htmlType="submit" 
-            size="large" 
-            loading={loading}
-            style={{ 
-              marginTop: 8, 
-              borderRadius: 8, 
-              fontWeight: 500,
-              height: 44 
-            }} 
-            block
-          >
+          <Button type="primary" htmlType="submit" size="large" loading={loading} style={{ marginTop: 8, borderRadius: 8, fontWeight: 500, height: 44 }} block>
             Giriş Yap
           </Button>
         </form>

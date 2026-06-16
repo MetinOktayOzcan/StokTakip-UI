@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Drawer, Form, Input, Space, message, Popconfirm, Grid, List, Card } from 'antd';
+import { Table, Button, Drawer, Form, Input, Space, message, Popconfirm, Grid, Card, Pagination } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, TagsOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { useBreakpoint } = Grid;
+
+const getId = (kategori) => kategori?.kategoriID || kategori?.kategoriId || kategori?.id;
 
 const Kategoriler = () => {
   const [kategoriler, setKategoriler] = useState([]);
@@ -12,6 +14,7 @@ const Kategoriler = () => {
   const [drawerAcik, setDrawerAcik] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
   const [seciliKategori, setSeciliKategori] = useState(null);
+  const [mobilSayfa, setMobilSayfa] = useState(1);
   const [form] = Form.useForm();
 
   const screens = useBreakpoint();
@@ -19,11 +22,13 @@ const Kategoriler = () => {
 
   const verileriCek = async () => {
     try {
+      setYukleniyor(true);
       const response = await axios.get('/api/kategoriler');
       setKategoriler(response.data);
       setFiltrelenmisKategoriler(response.data);
-      setYukleniyor(false);
-    } catch (error) {
+    } catch {
+      message.error("Kategoriler yüklenirken bir hata oluştu.");
+    } finally {
       setYukleniyor(false);
     }
   };
@@ -34,18 +39,20 @@ const Kategoriler = () => {
 
   useEffect(() => {
     if (aramaMetni) {
+      const aramaKucuk = aramaMetni.toLowerCase();
       const sonuc = kategoriler.filter(k => 
-        k.kategoriAdi?.toLowerCase().includes(aramaMetni.toLowerCase())
+        k.kategoriAdi?.toLowerCase().includes(aramaKucuk)
       );
       setFiltrelenmisKategoriler(sonuc);
     } else {
       setFiltrelenmisKategoriler(kategoriler);
     }
+    setMobilSayfa(1);
   }, [aramaMetni, kategoriler]);
 
   const handleSave = async (degerler) => {
     try {
-      const gercekID = seciliKategori ? (seciliKategori.kategoriID || seciliKategori.kategoriId || seciliKategori.id) : 0;
+      const gercekID = seciliKategori ? getId(seciliKategori) : 0;
       
       const payload = {
         kategoriID: gercekID,
@@ -67,12 +74,11 @@ const Kategoriler = () => {
   };
 
   const handleDelete = async (kategori) => {
-    const gercekID = kategori.kategoriID || kategori.kategoriId || kategori.id;
     try {
-      await axios.delete(`/api/kategoriler/${gercekID}`);
+      await axios.delete(`/api/kategoriler/${getId(kategori)}`);
       message.success("Kategori sistemden silindi.");
       verileriCek();
-    } catch (error) {
+    } catch {
       message.error("Silme başarısız. Bu kategoriye ait ürünler olabilir.");
     }
   };
@@ -124,28 +130,29 @@ const Kategoriler = () => {
   ];
 
   const mobilListeRender = (record) => (
-    <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card 
-        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <div style={{ background: 'var(--ant-color-bg-layout)', padding: '6px', borderRadius: '6px', display: 'flex' }}>
-            <TagsOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />
-          </div>
-          <span style={{ fontWeight: 600, color: 'var(--ant-color-text)', fontSize: 15 }}>{record.kategoriAdi}</span>
+    <Card 
+      key={getId(record) || Math.random().toString()}
+      style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
+      styles={{ body: { padding: 16 } }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ background: 'var(--ant-color-bg-layout)', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+          <TagsOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />
         </div>
-        
-        <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '0 0 12px 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
-          <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
-            <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
-          </Popconfirm>
-        </div>
-      </Card>
-    </List.Item>
+        <span style={{ fontWeight: 600, color: 'var(--ant-color-text)', fontSize: 15 }}>{record.kategoriAdi}</span>
+      </div>
+      
+      <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '0 0 12px 0' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
+        <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
+          <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
+        </Popconfirm>
+      </div>
+    </Card>
   );
+
+  const sayfaVerisi = filtrelenmisKategoriler.slice((mobilSayfa - 1) * 10, mobilSayfa * 10);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -158,7 +165,7 @@ const Kategoriler = () => {
         </div>
       </div>
 
-      <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 16 } }}>
         <Input 
           placeholder="Kategori adı ara..." 
           prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
@@ -169,22 +176,28 @@ const Kategoriler = () => {
       </Card>
 
       {isMobile ? (
-        <List 
-          dataSource={filtrelenmisKategoriler} 
-          renderItem={mobilListeRender} 
-          loading={yukleniyor} 
-          rowKey={(r) => r.kategoriID || r.kategoriId || Math.random().toString()} 
-          pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} 
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!yukleniyor && sayfaVerisi.map(mobilListeRender)}
+          {!yukleniyor && filtrelenmisKategoriler.length > 0 && (
+            <Pagination 
+              current={mobilSayfa} 
+              total={filtrelenmisKategoriler.length} 
+              pageSize={10} 
+              onChange={setMobilSayfa} 
+              align="center" 
+              size="small"
+            />
+          )}
+        </div>
       ) : (
-        <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 0 } }}>
           <Table 
             dataSource={filtrelenmisKategoriler} 
             columns={tabloSutunlari} 
-            rowKey={(r) => r.kategoriID || r.kategoriId || Math.random().toString()} 
+            rowKey={(r) => getId(r) || Math.random().toString()} 
             loading={yukleniyor} 
             scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            pagination={{ pageSize: 10, placement: ['bottomCenter'] }}
             rowClassName={() => 'custom-row-hover'}
             style={{ background: 'transparent' }}
           />
@@ -193,7 +206,7 @@ const Kategoriler = () => {
 
       <Drawer
         title={seciliKategori ? "Kategoriyi Düzenle" : "Yeni Kategori Ekle"}
-        width={isMobile ? '100%' : 400}
+        size="default"
         onClose={formKapat}
         open={drawerAcik}
         destroyOnClose

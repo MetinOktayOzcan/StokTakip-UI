@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Drawer, Form, Input, Select, Space, message, Popconfirm, Grid, Card, List, Tag } from 'antd';
+import { Table, Button, Drawer, Form, Input, Select, Space, message, Popconfirm, Grid, Card, Tag, Pagination } from 'antd';
 import { SearchOutlined, EditOutlined, DeleteOutlined, UserAddOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { useBreakpoint } = Grid;
+
+const getId = (kullanici) => kullanici?.kullaniciID || kullanici?.kullaniciId || kullanici?.id;
 
 const Kullanicilar = () => {
   const [kullanicilar, setKullanicilar] = useState([]);
@@ -12,6 +14,7 @@ const Kullanicilar = () => {
   const [drawerAcik, setDrawerAcik] = useState(false);
   const [aramaMetni, setAramaMetni] = useState('');
   const [seciliKullanici, setSeciliKullanici] = useState(null);
+  const [mobilSayfa, setMobilSayfa] = useState(1);
   const [form] = Form.useForm();
 
   const screens = useBreakpoint();
@@ -19,11 +22,13 @@ const Kullanicilar = () => {
 
   const fetchKullanicilar = async () => {
     try {
+      setYukleniyor(true);
       const response = await axios.get('/api/kullanicilar');
       setKullanicilar(response.data);
       setFiltrelenmisKullanicilar(response.data);
-      setYukleniyor(false);
-    } catch (error) {
+    } catch {
+      message.error("Kullanıcılar yüklenirken bir hata oluştu.");
+    } finally {
       setYukleniyor(false);
     }
   };
@@ -34,20 +39,22 @@ const Kullanicilar = () => {
 
   useEffect(() => {
     if (aramaMetni) {
+      const aramaKucuk = aramaMetni.toLowerCase();
       const sonuc = kullanicilar.filter(k => 
-        k.adSoyad?.toLowerCase().includes(aramaMetni.toLowerCase()) || 
-        k.kullaniciAdi?.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-        k.rol?.toLowerCase().includes(aramaMetni.toLowerCase())
+        k.adSoyad?.toLowerCase().includes(aramaKucuk) || 
+        k.kullaniciAdi?.toLowerCase().includes(aramaKucuk) ||
+        k.rol?.toLowerCase().includes(aramaKucuk)
       );
       setFiltrelenmisKullanicilar(sonuc);
     } else {
       setFiltrelenmisKullanicilar(kullanicilar);
     }
+    setMobilSayfa(1);
   }, [aramaMetni, kullanicilar]);
 
   const handleSave = async (degerler) => {
     try {
-      const gercekID = seciliKullanici ? (seciliKullanici.kullaniciID || seciliKullanici.kullaniciId || seciliKullanici.id) : 0;
+      const gercekID = seciliKullanici ? getId(seciliKullanici) : 0;
       
       const payload = {
         id: gercekID,
@@ -72,12 +79,11 @@ const Kullanicilar = () => {
   };
 
   const handleDelete = async (kullanici) => {
-    const gercekID = kullanici.kullaniciID || kullanici.kullaniciId || kullanici.id;
     try {
-      await axios.delete(`/api/kullanicilar/${gercekID}`);
+      await axios.delete(`/api/kullanicilar/${getId(kullanici)}`);
       message.success("Kullanıcı sistemden silindi.");
       fetchKullanicilar();
-    } catch (error) {
+    } catch {
       message.error("Silme başarısız.");
     }
   };
@@ -105,9 +111,9 @@ const Kullanicilar = () => {
 
   const getRoleBadge = (rol) => {
     const kucukRol = rol?.toLowerCase() || '';
-    if (kucukRol === 'admin') return <Tag color="blue" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>ADMIN</Tag>;
-    if (kucukRol === 'depo sorumlusu') return <Tag color="orange" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>DEPO SORUMLUSU</Tag>;
-    return <Tag color="default" bordered={false} style={{ borderRadius: 6, fontWeight: 600 }}>İZLEYİCİ</Tag>;
+    if (kucukRol === 'admin') return <Tag color="blue" variant="filled" style={{ borderRadius: 6, fontWeight: 600 }}>ADMIN</Tag>;
+    if (kucukRol === 'depo sorumlusu') return <Tag color="orange" variant="filled" style={{ borderRadius: 6, fontWeight: 600 }}>DEPO SORUMLUSU</Tag>;
+    return <Tag color="default" variant="filled" style={{ borderRadius: 6, fontWeight: 600 }}>İZLEYİCİ</Tag>;
   };
 
   const tabloSutunlari = [
@@ -146,30 +152,31 @@ const Kullanicilar = () => {
   ];
 
   const mobilListeRender = (record) => (
-    <List.Item style={{ padding: '0 0 16px 0', border: 'none' }}>
-      <Card 
-        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <span style={{ fontWeight: 600, color: 'var(--ant-color-text)', fontSize: 15 }}>{record.adSoyad || record.kullaniciAdi}</span>
-          {getRoleBadge(record.rol)}
-        </div>
+    <Card 
+      key={getId(record)}
+      style={{ width: '100%', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }}
+      styles={{ body: { padding: 16 } }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <span style={{ fontWeight: 600, color: 'var(--ant-color-text)', fontSize: 15 }}>{record.adSoyad || record.kullaniciAdi}</span>
+        {getRoleBadge(record.rol)}
+      </div>
 
-        <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
-          @{record.kullaniciAdi}
-        </div>
-        
-        <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '0 0 12px 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openDrawer(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
-          <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
-            <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
-          </Popconfirm>
-        </div>
-      </Card>
-    </List.Item>
+      <div style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
+        @{record.kullaniciAdi}
+      </div>
+      
+      <div style={{ borderTop: '1px solid var(--ant-color-border-secondary)', margin: '0 0 12px 0' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Button size="small" icon={<EditOutlined />} onClick={() => openDrawer(record)} style={{ borderRadius: 6 }}>Düzenle</Button>
+        <Popconfirm title="Silinsin mi?" onConfirm={() => handleDelete(record)} okText="Evet" cancelText="Hayır">
+          <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }}>Sil</Button>
+        </Popconfirm>
+      </div>
+    </Card>
   );
+
+  const sayfaVerisi = filtrelenmisKullanicilar.slice((mobilSayfa - 1) * 10, mobilSayfa * 10);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -182,7 +189,7 @@ const Kullanicilar = () => {
         </div>
       </div>
 
-      <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 16 }}>
+      <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 16 } }}>
         <Input 
           placeholder="İsim, kullanıcı adı veya rol ara..." 
           prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-secondary)' }} />}
@@ -193,22 +200,28 @@ const Kullanicilar = () => {
       </Card>
 
       {isMobile ? (
-        <List 
-          dataSource={filtrelenmisKullanicilar} 
-          renderItem={mobilListeRender} 
-          loading={yukleniyor} 
-          rowKey={(r) => r.kullaniciID || r.id} 
-          pagination={{ position: 'bottom', align: 'center', pageSize: 10 }} 
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!yukleniyor && sayfaVerisi.map(mobilListeRender)}
+          {!yukleniyor && filtrelenmisKullanicilar.length > 0 && (
+            <Pagination 
+              current={mobilSayfa} 
+              total={filtrelenmisKullanicilar.length} 
+              pageSize={10} 
+              onChange={setMobilSayfa} 
+              align="center" 
+              size="small"
+            />
+          )}
+        </div>
       ) : (
-        <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)', boxShadow: 'none' }} styles={{ body: { padding: 0 } }}>
           <Table 
             dataSource={filtrelenmisKullanicilar} 
             columns={tabloSutunlari} 
-            rowKey={(r) => r.kullaniciID || r.id} 
+            rowKey={getId} 
             loading={yukleniyor} 
             scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+            pagination={{ placement: ['bottomCenter'], pageSize: 10 }}
             rowClassName={() => 'custom-row-hover'}
             style={{ background: 'transparent' }}
           />
@@ -217,7 +230,7 @@ const Kullanicilar = () => {
 
       <Drawer
         title={seciliKullanici ? "Kullanıcıyı Düzenle" : "Yeni Kullanıcı Ekle"}
-        width={isMobile ? '100%' : 400}
+        size="default"
         onClose={formKapat}
         open={drawerAcik}
         destroyOnClose
@@ -240,8 +253,8 @@ const Kullanicilar = () => {
           <Form.Item label="Rol / Yetki" name="rol" rules={[{ required: true, message: 'Rol seçimi zorunlu!' }]}>
             <Select placeholder="Sistem yetkisini seçin" size="large" style={{ borderRadius: 8 }}>
               <Select.Option value="Admin">Admin (Tam Yetki)</Select.Option>
-              <Select.Option value="Depo Sorumlusu">Depo Sorumlusu (Sınırlı Yetki)</Select.Option>
-              <Select.Option value="İzleyici">İzleyici (Sadece Okuma)</Select.Option>
+              <Select.Option value="Yonetici">Yönetici (Sınırlı Yetki)</Select.Option>
+              <Select.Option value="Personel">Personel (Sadece Okuma)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item label={seciliKullanici ? "Yeni Şifre (Boş bırakılabilir)" : "Şifre"} name="sifre" rules={[{ required: !seciliKullanici, message: 'Şifre zorunlu!' }]}>

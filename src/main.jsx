@@ -4,43 +4,71 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import './index.css';
 import axios from 'axios';
+import { message } from 'antd';
 
-axios.defaults.baseURL = 'https://stoktakip-core-api2026007181930-fcgheugwghhvcdck.spaincentral-01.azurewebsites.net';
-
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.withCredentials = true;
 
 axios.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401 && !error.config.url.includes('/login')) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/login')) {
+      originalRequest._retry = true;
+
+      try {
+        await axios.post('/api/auth/refresh');
+        return axios(originalRequest);
+      } catch (refreshError) {
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
     }
+
+    if (error.response && error.response.status === 403) {
+      message.error("Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır!");
+    }
+
     return Promise.reject(error);
   }
 );
 
-let timeoutId;
-const resetTimer = () => {
-  clearTimeout(timeoutId);
-  timeoutId = setTimeout(() => {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-  }, 900000);
+let isUpdating = false;
+
+const updateActivity = () => {
+  if (!isUpdating) {
+    localStorage.setItem('lastActivity', Date.now().toString());
+    isUpdating = true;
+    setTimeout(() => { isUpdating = false; }, 5000); 
+  }
 };
 
-window.addEventListener('mousemove', resetTimer);
-window.addEventListener('keydown', resetTimer);
-window.addEventListener('click', resetTimer);
-window.addEventListener('scroll', resetTimer);
+window.addEventListener('mousemove', updateActivity);
+window.addEventListener('keydown', updateActivity);
+window.addEventListener('click', updateActivity);
+window.addEventListener('scroll', updateActivity);
 
-resetTimer();
+localStorage.setItem('lastActivity', Date.now().toString());
+
+setInterval(async () => {
+  const userInfo = localStorage.getItem('userInfo');
+  if (userInfo) {
+    const lastActivity = localStorage.getItem('lastActivity');
+    const now = Date.now();
+    
+    if (lastActivity && (now - parseInt(lastActivity, 10) > 900000)) {
+      try {
+        await axios.post('/api/auth/logout');
+      } catch {
+      } finally {
+        localStorage.clear();
+        window.location.href = '/login';
+      }
+    }
+  }
+}, 30000);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>

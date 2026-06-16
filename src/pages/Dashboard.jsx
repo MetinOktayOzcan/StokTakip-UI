@@ -14,21 +14,19 @@ const Dashboard = () => {
   const [loglar, setLoglar] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/urunler').then(res => setUrunler(res.data)).catch(err => console.error(err));
-    axios.get('/api/stokhareketleri').then(res => setHareketler(res.data)).catch(err => console.error(err));
-    axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)).catch(err => console.error(err)); 
+    axios.get('/api/urunler').then(res => setUrunler(res.data)).catch(() => {});
+    axios.get('/api/stokhareketleri').then(res => setHareketler(res.data)).catch(() => {});
+    axios.get('/api/islemgecmisi').then(res => setLoglar(res.data)).catch(() => {}); 
   }, []);
 
   const kritikStokUrunleri = urunler.filter(u => u.stokAdedi < 15).sort((a, b) => a.stokAdedi - b.stokAdedi);
-  const kritikStokSayisi = urunler.filter(u => u.stokAdedi < 15).length;
+  const kritikStokSayisi = kritikStokUrunleri.length;
   
-  let totalAdet = 0;
-  let totalValue = 0;
-  
-  urunler.forEach(u => {
-    totalAdet += u.stokAdedi;
-    totalValue += (u.stokAdedi * u.birimFiyati);
-  });
+  const { totalAdet, totalValue } = urunler.reduce((acc, u) => {
+    acc.totalAdet += u.stokAdedi;
+    acc.totalValue += (u.stokAdedi * u.birimFiyati);
+    return acc;
+  }, { totalAdet: 0, totalValue: 0 });
 
   const bugun = new Date().toLocaleDateString('tr-TR');
   const bugunkuIslemler = hareketler.filter(h => new Date(h.islemTarihi).toLocaleDateString('tr-TR') === bugun).length;
@@ -40,7 +38,9 @@ const Dashboard = () => {
     categoryMap[kat] = (categoryMap[kat] || 0) + u.stokAdedi;
   });
 
-  const chartData = Object.keys(categoryMap).map(k => ({ name: k, value: categoryMap[k] })).sort((a, b) => b.value - a.value);
+  const chartData = Object.keys(categoryMap)
+    .map(k => ({ name: k, value: categoryMap[k] }))
+    .sort((a, b) => b.value - a.value);
 
   const weeklyData = [...Array(7)].map((_, i) => {
     const d = new Date();
@@ -78,7 +78,7 @@ const Dashboard = () => {
     { title: 'Durum', key: 'status', render: (_, record) => {
         const isCritical = record.stokAdedi < 10;
         return (
-          <Tag color={isCritical ? 'error' : 'warning'} style={{ borderRadius: 12, border: 0, fontWeight: 500, padding: '2px 8px' }}>
+          <Tag color={isCritical ? 'error' : 'warning'} variant="filled" style={{ borderRadius: 12, fontWeight: 500, padding: '2px 8px' }}>
             {isCritical ? 'Kritik' : 'Azalıyor'}
           </Tag>
         );
@@ -86,8 +86,8 @@ const Dashboard = () => {
     }
   ];
 
-  const StatCard = ({ title, value, icon, trend, isAlert }) => (
-    <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 20 }}>
+  const StatCard = ({ title, value, icon, trend, trendSuffix = "geçen aya göre", isAlert }) => (
+    <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} styles={{ body: { padding: 20 } }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Text style={{ color: '#71717A', fontSize: 13, fontWeight: 500 }}>{title}</Text>
         <div style={{ color: isAlert ? '#EF4444' : '#A1A1AA', fontSize: 18 }}>{icon}</div>
@@ -98,7 +98,7 @@ const Dashboard = () => {
       <div style={{ marginTop: 8 }}>
         {trend && (
           <Text style={{ fontSize: 12, color: trend.includes('+') ? '#10B981' : '#71717A', fontWeight: 500 }}>
-            {trend} <span style={{ color: '#A1A1AA', fontWeight: 400 }}>geçen aya göre</span>
+            {trend} {trendSuffix && <span style={{ color: '#A1A1AA', fontWeight: 400 }}>{trendSuffix}</span>}
           </Text>
         )}
       </div>
@@ -117,16 +117,16 @@ const Dashboard = () => {
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}><StatCard title="Toplam Ürün Sayısı" value={totalAdet.toLocaleString()} icon={<AppstoreOutlined />} trend="+12.5%" /></Col>
         <Col xs={24} sm={12} lg={6}><StatCard title="Stok Değeri" value={`${totalValue.toLocaleString()} ₺`} icon={<RiseOutlined />} trend="+4.1%" /></Col>
-        <Col xs={24} sm={12} lg={6}><StatCard title="Bugünün İşlemleri" value={bugunkuIslemler} icon={<ShoppingCartOutlined />} trend="+24 bugün" /></Col>
-        <Col xs={24} sm={12} lg={6}><StatCard title="Önemli Uyarılar" value={kritikStokSayisi} icon={<AlertOutlined />} isAlert trend={`${kritikStokSayisi} ürün eşik altında`} /></Col>
+        <Col xs={24} sm={12} lg={6}><StatCard title="Bugünün İşlemleri" value={bugunkuIslemler} icon={<ShoppingCartOutlined />} trend={`+${bugunkuIslemler} bugün`} trendSuffix="" /></Col>
+        <Col xs={24} sm={12} lg={6}><StatCard title="Önemli Uyarılar" value={kritikStokSayisi} icon={<AlertOutlined />} isAlert trend={`${kritikStokSayisi} ürün eşik altında`} trendSuffix="" /></Col>
       </Row>
 
       <Row gutter={[24, 24]}>
-        <Col xs={24} xl={16}>
-          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', height: '100%', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 24 }}>
+        <Col xs={24} xl={16} style={{ minWidth: 0 }}>
+          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', height: '100%', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} styles={{ body: { padding: 24 } }}>
             <Title level={5} style={{ margin: '0 0 24px 0', fontSize: 15, fontWeight: 600 }}>Haftalık Stok Dalgalanması</Title>
-            <div style={{ height: 320 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ height: 320, width: '100%' }}>
+              <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={weeklyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorGiris" x1="0" y1="0" x2="0" y2="1">
@@ -150,11 +150,11 @@ const Dashboard = () => {
           </Card>
         </Col>
 
-        <Col xs={24} xl={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', height: '100%', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} bodyStyle={{ padding: 24 }}>
+        <Col xs={24} xl={8} style={{ minWidth: 0 }}>
+          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', height: '100%', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }} styles={{ body: { padding: 24 } }}>
             <Title level={5} style={{ margin: '0 0 24px 0', fontSize: 15, fontWeight: 600 }}>Kategori Dağılımı</Title>
-            <div style={{ height: 200, position: 'relative' }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ height: 200, position: 'relative', width: '100%' }}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={chartData} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
                     {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
@@ -184,7 +184,7 @@ const Dashboard = () => {
 
       <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
         <Col xs={24} xl={16} style={{ display: 'flex' }}>
-          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)', width: '100%', display: 'flex', flexDirection: 'column' }} bodyStyle={{ padding: 0, flex: 1 }}>
+          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)', width: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 0, flex: 1 } }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #E4E4E7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title level={5} style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Kritik Stoktaki Ürünler</Title>
             </div>
@@ -192,23 +192,17 @@ const Dashboard = () => {
               <Table 
                 dataSource={kritikStokUrunleri} 
                 columns={tableColumns} 
-                pagination={{ pageSize: 4, size: 'small', position: ['bottomCenter'] }} 
-                rowKey="urunId"
+                pagination={{ placement: ['bottomCenter'], pageSize: 4, size: 'small' }} 
+                rowKey={(record) => record.urunID || record.urunId || record.id}
                 style={{ background: 'transparent' }}
                 rowClassName={() => 'custom-table-row'}
               />
             </div>
-            <style>{`
-              .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
-              .custom-table-row:hover > td { background: #F4F4F5 !important; }
-              .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
-              .ant-table-wrapper .ant-table-tbody > tr:last-child > td { border-bottom: none; }
-            `}</style>
           </Card>
         </Col>
         
         <Col xs={24} xl={8} style={{ display: 'flex' }}>
-          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)', width: '100%', display: 'flex', flexDirection: 'column' }} bodyStyle={{ padding: 24, flex: 1 }}>
+          <Card style={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)', width: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 24, flex: 1 } }}>
             <Title level={5} style={{ margin: '0 0 24px 0', fontSize: 15, fontWeight: 600 }}>Geçmiş İşlemler</Title>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {sonLoglar.map((log, idx) => {
@@ -237,6 +231,12 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
+      <style>{`
+        .ant-table-wrapper .ant-table-thead > tr > th { background: #FAFAFA; color: #71717A; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; border-bottom: 1px solid #E4E4E7; }
+        .custom-table-row:hover > td { background: #F4F4F5 !important; }
+        .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid #F4F4F5; }
+        .ant-table-wrapper .ant-table-tbody > tr:last-child > td { border-bottom: none; }
+      `}</style>
     </div>
   );
 };
